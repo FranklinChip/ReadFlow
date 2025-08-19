@@ -39,6 +39,8 @@ import { isTauriAppPlatform } from '@/services/environment';
 import { transformContent } from '@/services/transformService';
 import { lockScreenOrientation } from '@/utils/bridge';
 import { useTextTranslation } from '../hooks/useTextTranslation';
+import { useUnknownWordDisplay } from '../hooks/useUnknownWordDisplay';
+import { useWordsAnnotation } from '../hooks/useWordsAnnotation';
 import { manageSyntaxHighlighting } from '@/utils/highlightjs';
 import { getViewInsets } from '@/utils/insets';
 
@@ -76,6 +78,8 @@ const FoliateViewer: React.FC<{
   useProgressSync(bookKey);
   useProgressAutoSave(bookKey);
   useTextTranslation(bookKey, viewRef.current);
+  useUnknownWordDisplay(bookKey, viewRef.current);
+  useWordsAnnotation(bookKey, viewRef.current);
 
   const progressRelocateHandler = (event: Event) => {
     const detail = (event as CustomEvent).detail;
