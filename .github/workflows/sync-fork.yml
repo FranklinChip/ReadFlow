@@ -1,0 +1,40 @@
+name: Sync Fork
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # 每天午夜执行
+  workflow_dispatch:     # 允许手动触发
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+
+    - name: Sync upstream
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        
+        # 添加上游远程仓库
+        git remote add upstream https://github.com/readest/readest.git
+        
+        # 拉取上游更改
+        git fetch upstream
+        
+        # 合并到main分支
+        git checkout main
+        git merge upstream/main
+        
+        # 推送更改
+        git push origin main
+
+    - name: Delete merged branches
+      run: |
+        # 删除已合并的功能分支(可选)
+        git branch -r --merged | grep -v main | grep -v HEAD | sed 's/origin\///' | xargs -n 1 git push --delete origin || true

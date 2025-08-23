@@ -35,6 +35,7 @@ import {
   DEFAULT_MOBILE_READSETTINGS,
   DEFAULT_SCREEN_CONFIG,
   DEFAULT_TRANSLATOR_CONFIG,
+  DEFAULT_WORD_ANNOTATION_CONFIG,
 } from './constants';
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { getOSPlatform, getTargetLang, isCJKEnv, isContentURI, isValidURL } from '@/utils/misc';
@@ -88,6 +89,7 @@ export abstract class BaseAppService implements AppService {
       ...DEFAULT_TTS_CONFIG,
       ...DEFAULT_SCREEN_CONFIG,
       ...{ ...DEFAULT_TRANSLATOR_CONFIG, translateTargetLang: getTargetLang() },
+      ...DEFAULT_WORD_ANNOTATION_CONFIG,
     };
   }
 

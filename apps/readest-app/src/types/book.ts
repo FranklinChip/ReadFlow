@@ -163,6 +163,23 @@ export interface TranslatorConfig {
   showTranslateSource: boolean;
 }
 
+export interface WordAnnotationConfig {
+  wordAnnotationEnabled: boolean;
+  wordAnnotationLanguage: 'zh' | 'en' | 'both';
+  wordAnnotationFontSize: number;
+  wordAnnotationOpacity: number;
+  wordAnnotationColor: string;
+  wordAnnotationPosition: 'over' | 'under';
+  wordAnnotationBaseStyle: 'none' | 'underline' | 'highlight' | 'color';
+  wordAnnotationBaseHighlightColor: string;
+  wordAnnotationBaseTextColor: string;
+  // 新增：词组相关配置
+  phraseAnnotationEnabled: boolean;
+  phraseAnnotationBaseStyle: 'none' | 'underline' | 'highlight' | 'color';
+  phraseAnnotationBaseHighlightColor: string;
+  phraseAnnotationBaseTextColor: string;
+}
+
 export interface ScreenConfig {
   screenOrientation: 'auto' | 'portrait' | 'landscape';
 }
@@ -174,6 +191,7 @@ export interface ViewSettings
     ViewConfig,
     TTSConfig,
     TranslatorConfig,
+    WordAnnotationConfig,
     ScreenConfig {}
 
 export interface BookProgress {

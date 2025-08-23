@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { LuWholeWord } from 'react-icons/lu';
 
 import { useEnv } from '@/context/EnvContext';
@@ -20,6 +20,21 @@ const WordAnnotationToggler = ({ bookKey }: { bookKey: string }) => {
     viewSettings.wordAnnotationEnabled,
   );
   const [wordAnnotationAvailable, setWordAnnotationAvailable] = useState(false);
+  const [isWaiting, setIsWaiting] = useState(false);
+
+  const handleToggleClick = useCallback(() => {
+    const newState = !wordAnnotationEnabled;
+    
+    // 设置新状态
+    setWordAnnotationEnabled(newState);
+    
+    // 触发实时注释事件
+    if (newState) {
+      window.dispatchEvent(new CustomEvent('real-time-annotation-request', {
+        detail: { bookKey, type: 'both' }
+      }));
+    }
+  }, [wordAnnotationEnabled, bookKey]);
 
   useEffect(() => {
     if (wordAnnotationEnabled === viewSettings.wordAnnotationEnabled) return;
@@ -49,20 +64,21 @@ const WordAnnotationToggler = ({ bookKey }: { bookKey: string }) => {
       try {
         // 通过 renderer.getContents() 获取当前内容
         const contents = view.renderer.getContents();
-        let rubyElements: NodeListOf<Element> | null = null;
+        let hasTextContent = false;
         
         if (contents && contents.length > 0) {
           // 获取第一个内容的文档
           const currentDoc = contents[0]?.doc;
           if (currentDoc) {
-            rubyElements = currentDoc.querySelectorAll('ruby.word, ruby.mwe');
+            // 检查是否有文本内容（段落、句子等）
+            const textElements = currentDoc.querySelectorAll('p, div, span, section');
+            hasTextContent = textElements.length > 0;
           }
         }
         
-        const available = rubyElements ? rubyElements.length > 0 : false;
-        setWordAnnotationAvailable(available);
+        setWordAnnotationAvailable(hasTextContent);
       } catch (error) {
-        console.warn('Error checking ruby elements:', error);
+        console.warn('Error checking text content:', error);
         setWordAnnotationAvailable(false);
       }
     };
@@ -70,22 +86,42 @@ const WordAnnotationToggler = ({ bookKey }: { bookKey: string }) => {
     // 立即检查一次
     checkAvailability();
     
-    // 如果还没有找到ruby元素，设置一个延迟检查
+    // 如果还没有找到文本内容，设置一个延迟检查
     const timer = setTimeout(checkAvailability, 1000);
     
     return () => clearTimeout(timer);
-  }, [bookData, wordAnnotationEnabled, bookKey]);
+  }, [bookData, wordAnnotationEnabled, bookKey, getView]);
+
+  // 监听LLM注释状态
+  useEffect(() => {
+    const handleAnnotationStart = () => setIsWaiting(true);
+    const handleAnnotationEnd = () => setIsWaiting(false);
+
+    window.addEventListener('llm-annotation-start', handleAnnotationStart);
+    window.addEventListener('llm-annotation-end', handleAnnotationEnd);
+
+    return () => {
+      window.removeEventListener('llm-annotation-start', handleAnnotationStart);
+      window.removeEventListener('llm-annotation-end', handleAnnotationEnd);
+    };
+  }, []);
 
   return (
     <Button
       icon={
-        <LuWholeWord className={wordAnnotationEnabled ? 'text-blue-500' : 'text-base-content'} />
+        isWaiting ? (
+          <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full" />
+        ) : (
+          <LuWholeWord className={wordAnnotationEnabled ? 'text-blue-500' : 'text-base-content'} />
+        )
       }
-      disabled={!wordAnnotationAvailable}
-      onClick={() => setWordAnnotationEnabled(!wordAnnotationEnabled)}
+      disabled={!wordAnnotationAvailable || isWaiting}
+      onClick={handleToggleClick}
       tooltip={
         wordAnnotationAvailable
-          ? wordAnnotationEnabled
+          ? isWaiting
+            ? _('Processing Words...')
+            : wordAnnotationEnabled
             ? _('Disable Word Annotation')
             : _('Enable Word Annotation')
           : _('Word Annotation Not Available')

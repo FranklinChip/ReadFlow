@@ -1,7 +1,6 @@
 export interface WordAnnotation {
   word: string;
   lemma: string;
-  pos: string;
   zh: string;
   en: string;
 }
@@ -14,7 +13,7 @@ export interface MWEAnnotation {
 }
 
 export interface ProperNounAnnotation {
-  word: string;
+  phrase: string; // 改为phrase以支持多词专有名词
   zh: string;
   en: string;
 }
@@ -31,9 +30,7 @@ export interface AnnotationProvider {
   annotate: (text: string) => Promise<AnnotationResponse>;
 }
 
-export interface AnnotationCache {
-  [key: string]: AnnotationResponse;
-}
+
 
 export const ErrorCodes = {
   LLM_API_ERROR: 'LLM API Error',

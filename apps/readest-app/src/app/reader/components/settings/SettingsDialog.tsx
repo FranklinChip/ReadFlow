@@ -9,7 +9,7 @@ import { RiDashboardLine, RiTranslate } from 'react-icons/ri';
 import { VscSymbolColor } from 'react-icons/vsc';
 import { PiDotsThreeVerticalBold } from 'react-icons/pi';
 import { LiaHandPointerSolid } from 'react-icons/lia';
-import { IoAccessibilityOutline } from 'react-icons/io5';
+import { LuWholeWord } from 'react-icons/lu';
 import { MdArrowBackIosNew, MdArrowForwardIos } from 'react-icons/md';
 import { getDirFromUILanguage } from '@/utils/rtl';
 import FontPanel from './FontPanel';
@@ -20,9 +20,9 @@ import Dialog from '@/components/Dialog';
 import DialogMenu from './DialogMenu';
 import ControlPanel from './ControlPanel';
 import LangPanel from './LangPanel';
-import MiscPanel from './MiscPanel';
+import WordAnnotationPanel from './WordAnnotationPanel';
 
-export type SettingsPanelType = 'Font' | 'Layout' | 'Color' | 'Control' | 'Language' | 'Custom';
+export type SettingsPanelType = 'Font' | 'Layout' | 'Color' | 'Control' | 'Language' | 'WordAnnotation';
 export type SettingsPanelPanelProp = {
   bookKey: string;
   onRegisterReset: (resetFn: () => void) => void;
@@ -69,9 +69,9 @@ const SettingsDialog: React.FC<{ bookKey: string; config: BookConfig }> = ({ boo
       label: _('Language'),
     },
     {
-      tab: 'Custom',
-      icon: IoAccessibilityOutline,
-      label: _('Custom'),
+      tab: 'WordAnnotation',
+      icon: LuWholeWord,
+      label: _('Word Annotation'),
     },
   ] as TabConfig[];
 
@@ -96,7 +96,7 @@ const SettingsDialog: React.FC<{ bookKey: string; config: BookConfig }> = ({ boo
     Color: null,
     Control: null,
     Language: null,
-    Custom: null,
+    WordAnnotation: null,
   });
 
   const registerResetFunction = (panel: SettingsPanelType, resetFn: () => void) => {
@@ -272,10 +272,10 @@ const SettingsDialog: React.FC<{ bookKey: string; config: BookConfig }> = ({ boo
           onRegisterReset={(fn) => registerResetFunction('Language', fn)}
         />
       )}
-      {activePanel === 'Custom' && (
-        <MiscPanel
+      {activePanel === 'WordAnnotation' && (
+        <WordAnnotationPanel
           bookKey={bookKey}
-          onRegisterReset={(fn) => registerResetFunction('Custom', fn)}
+          onRegisterReset={(fn) => registerResetFunction('WordAnnotation', fn)}
         />
       )}
     </Dialog>

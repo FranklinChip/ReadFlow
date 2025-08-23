@@ -53,6 +53,7 @@ import { BookMetadata } from '@/libs/document';
 import { BookDetailModal } from '@/components/metadata';
 import { Toast } from '@/components/Toast';
 import Spinner from '@/components/Spinner';
+import MainNavigation from '@/components/MainNavigation';
 import LibraryHeader from './components/LibraryHeader';
 import Bookshelf from './components/Bookshelf';
 import useShortcuts from '@/hooks/useShortcuts';
@@ -639,6 +640,7 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
       )}
     >
       <div className='top-0 z-40 w-full'>
+        <MainNavigation currentPage="library" />
         <LibraryHeader
           isSelectMode={isSelectMode}
           isSelectAll={isSelectAll}

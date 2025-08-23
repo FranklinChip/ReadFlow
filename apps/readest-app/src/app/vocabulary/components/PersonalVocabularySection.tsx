@@ -1,4 +1,5 @@
 import { FC, useState } from 'react';
+import { MdDelete } from 'react-icons/md';
 
 interface PersonalWord {
   word: string;
@@ -9,12 +10,14 @@ interface PersonalWord {
 interface PersonalVocabularySectionProps {
   personalWords: PersonalWord[];
   onClearAll: () => void;
+  onDeleteWord: (word: string) => void;
   loading: boolean;
 }
 
 const PersonalVocabularySection: FC<PersonalVocabularySectionProps> = ({
   personalWords,
   onClearAll,
+  onDeleteWord,
   loading,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -158,6 +161,14 @@ const PersonalVocabularySection: FC<PersonalVocabularySectionProps> = ({
                   <span className="badge badge-success badge-sm">
                     Known
                   </span>
+                  <button
+                    className="btn btn-error btn-xs"
+                    onClick={() => onDeleteWord(item.word)}
+                    disabled={loading}
+                    title={`Delete ${item.type}`}
+                  >
+                    <MdDelete size={12} />
+                  </button>
                 </div>
               </div>
             ))}

@@ -4,6 +4,7 @@ import { useBookDataStore } from '@/store/bookDataStore';
 import { useReaderStore } from '@/store/readerStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { getStyles } from '@/utils/style';
+import { eventDispatcher } from '@/utils/event';
 
 export const saveViewSettings = async <K extends keyof ViewSettings>(
   envConfig: EnvConfigType,
@@ -27,6 +28,11 @@ export const saveViewSettings = async <K extends keyof ViewSettings>(
     }
   }
   setViewSettings(bookKey, viewSettings);
+
+  // 派发注释设置变更事件，仅对当前页面生效
+  if (key.includes('wordAnnotation') || key.includes('phraseAnnotation')) {
+    eventDispatcher.dispatch('annotation-settings-changed', { bookKey, key, value });
+  }
 
   if (isFontLayoutSettingsGlobal && !skipGlobal) {
     settings.globalViewSettings[key] = value;

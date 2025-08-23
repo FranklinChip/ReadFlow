@@ -16,6 +16,8 @@ import BookmarkToggler from './BookmarkToggler';
 import NotebookToggler from './NotebookToggler';
 import SettingsToggler from './SettingsToggler';
 import TranslationToggler from './TranslationToggler';
+import WordAnnotationToggler from './WordAnnotationToggler';
+import PhraseAnnotationToggler from './PhraseAnnotationToggler';
 import ViewMenu from './ViewMenu';
 
 interface HeaderBarProps {
@@ -124,6 +126,8 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
           </div>
           <BookmarkToggler bookKey={bookKey} />
           <TranslationToggler bookKey={bookKey} />
+          <WordAnnotationToggler bookKey={bookKey} />
+          <PhraseAnnotationToggler bookKey={bookKey} />
         </div>
 
         <div className='header-title z-15 bg-base-100 pointer-events-none absolute inset-0 hidden items-center justify-center sm:flex'>

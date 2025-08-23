@@ -11,6 +11,7 @@ import { useUICSS } from '@/hooks/useUICSS';
 import { eventDispatcher } from '@/utils/event';
 
 import MainNavigation from '@/components/MainNavigation';
+import Dialog from '@/components/Dialog';
 import VocabularyHeader from './components/VocabularyHeader';
 import WordlistSection from './components/WordlistSection';
 import PersonalVocabularySection from './components/PersonalVocabularySection';
@@ -24,7 +25,8 @@ const VocabularyPage = () => {
     importWordlist,
     clearPersonalVocabulary,
     getPersonalWords,
-    getAllWordlists
+    getAllWordlists,
+    removeWord
   } = useVocabularyStore();
   
   const personalWords = getPersonalWords();
@@ -33,6 +35,9 @@ const VocabularyPage = () => {
   
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'wordlists' | 'personal' | 'import'>('wordlists');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [wordToDelete, setWordToDelete] = useState<string | null>(null);
   
   const osRef = useRef<OverlayScrollbarsComponentRef>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -105,13 +110,42 @@ const VocabularyPage = () => {
   };
 
   const handleClearPersonalVocabulary = async () => {
-    if (window.confirm('Are you sure you want to clear all personal vocabulary?')) {
-      await clearPersonalVocabulary();
+    setShowClearConfirm(true);
+  };
+
+  const confirmClearVocabulary = async () => {
+    await clearPersonalVocabulary();
+    eventDispatcher.dispatch('toast', {
+      message: 'Personal vocabulary cleared',
+      type: 'success',
+    });
+    setShowClearConfirm(false);
+  };
+
+  const cancelClearVocabulary = () => {
+    setShowClearConfirm(false);
+  };
+
+  const handleDeleteWord = async (word: string) => {
+    setWordToDelete(word);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteWord = async () => {
+    if (wordToDelete) {
+      await removeWord(wordToDelete);
       eventDispatcher.dispatch('toast', {
-        message: 'Personal vocabulary cleared',
+        message: 'Word removed from vocabulary',
         type: 'success',
       });
     }
+    setShowDeleteConfirm(false);
+    setWordToDelete(null);
+  };
+
+  const cancelDeleteWord = () => {
+    setShowDeleteConfirm(false);
+    setWordToDelete(null);
   };
 
   return (
@@ -129,7 +163,6 @@ const VocabularyPage = () => {
       <VocabularyHeader 
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        loading={loading}
       />
 
       <div className="relative flex-1 overflow-hidden" ref={containerRef}>
@@ -164,6 +197,7 @@ const VocabularyPage = () => {
               <PersonalVocabularySection
                 personalWords={personalWords}
                 onClearAll={handleClearPersonalVocabulary}
+                onDeleteWord={handleDeleteWord}
                 loading={loading}
               />
             )}
@@ -177,6 +211,66 @@ const VocabularyPage = () => {
           </div>
         </OverlayScrollbarsComponent>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <Dialog
+          isOpen={showDeleteConfirm}
+          title="Confirm Deletion"
+          onClose={cancelDeleteWord}
+          boxClassName="sm:!w-96"
+        >
+          <div className="p-4">
+            <p className="text-base-content mb-6">
+              Are you sure you want to delete "{wordToDelete}" from your vocabulary?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                className="btn btn-outline"
+                onClick={cancelDeleteWord}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-error"
+                onClick={confirmDeleteWord}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
+
+      {/* Clear All Confirmation Dialog */}
+      {showClearConfirm && (
+        <Dialog
+          isOpen={showClearConfirm}
+          title="Clear All Vocabulary"
+          onClose={cancelClearVocabulary}
+          boxClassName="sm:!w-96"
+        >
+          <div className="p-4">
+            <p className="text-base-content mb-6">
+              Are you sure you want to clear all personal vocabulary? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                className="btn btn-outline"
+                onClick={cancelClearVocabulary}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-error"
+                onClick={confirmClearVocabulary}
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
     </div>
   );
 };

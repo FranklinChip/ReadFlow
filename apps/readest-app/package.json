@@ -61,6 +61,7 @@
     "@tauri-apps/plugin-process": "^2.2.2",
     "@tauri-apps/plugin-shell": "~2.2.2",
     "@tauri-apps/plugin-updater": "^2.8.1",
+    "@tippyjs/react": "^4.2.6",
     "@zip.js/zip.js": "^2.7.53",
     "aws4fetch": "^1.0.20",
     "clsx": "^2.1.1",
@@ -90,6 +91,7 @@
     "semver": "^7.7.1",
     "stripe": "^18.2.1",
     "tinycolor2": "^1.6.0",
+    "tippy.js": "^6.3.7",
     "zustand": "5.0.1"
   },
   "devDependencies": {

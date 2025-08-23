@@ -9,6 +9,7 @@ import {
   TTSConfig,
   ViewConfig,
   ViewSettings,
+  WordAnnotationConfig,
 } from '@/types/book';
 import { ReadSettings, SystemSettings } from '@/types/settings';
 import { UserStorageQuota, UserDailyTranslationQuota } from '@/types/user';
@@ -173,6 +174,22 @@ export const DEFAULT_TRANSLATOR_CONFIG: TranslatorConfig = {
   translationProvider: 'deepl',
   translateTargetLang: '',
   showTranslateSource: true,
+};
+
+export const DEFAULT_WORD_ANNOTATION_CONFIG: WordAnnotationConfig = {
+  wordAnnotationEnabled: false,
+  wordAnnotationLanguage: 'zh',
+  wordAnnotationFontSize: 0.7,
+  wordAnnotationOpacity: 0.8,
+  wordAnnotationColor: '#666666',
+  wordAnnotationPosition: 'under',
+  wordAnnotationBaseStyle: 'underline',
+  wordAnnotationBaseHighlightColor: '#FFFF00',
+  wordAnnotationBaseTextColor: '#FF0000',
+  phraseAnnotationEnabled: true,
+  phraseAnnotationBaseStyle: 'underline',
+  phraseAnnotationBaseHighlightColor: '#E6F3FF',
+  phraseAnnotationBaseTextColor: '#0066CC',
 };
 
 export const DEFAULT_SCREEN_CONFIG: ScreenConfig = {

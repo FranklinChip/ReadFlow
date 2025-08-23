@@ -9,5 +9,21 @@
   "Search in {{count}} Book(s)..._one": "Search in {{count}} book...",
   "Search in {{count}} Book(s)..._other": "Search in {{count}} books...",
   "{{count}} pages left in chapter_one": "{{count}} page left in chapter",
-  "{{count}} pages left in chapter_other": "{{count}} pages left in chapter"
+  "{{count}} pages left in chapter_other": "{{count}} pages left in chapter",
+  "Vocabulary": "Vocabulary",
+  "Known": "Known",
+  "Learning": "Learning",
+  "Unknown": "Unknown",
+  "Word added to vocabulary": "Word added to vocabulary",
+  "Word removed from vocabulary": "Word removed from vocabulary",
+  "Word Annotation": "Word Annotation",
+  "Annotation Language": "Annotation Language",
+  "Annotation Size": "Annotation Size",
+  "Annotation Opacity": "Annotation Opacity",
+  "Annotation Color": "Annotation Color",
+  "Annotation Position": "Annotation Position",
+  "Over": "Over",
+  "Under": "Under",
+  "Chinese": "Chinese",
+  "English": "English"
 }

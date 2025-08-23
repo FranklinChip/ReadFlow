@@ -8,6 +8,7 @@ import { RiDeleteBinLine } from 'react-icons/ri';
 import { BsTranslate } from 'react-icons/bs';
 import { TbHexagonLetterD } from 'react-icons/tb';
 import { FaHeadphones } from 'react-icons/fa6';
+import { MdPublishedWithChanges } from 'react-icons/md';
 
 import * as CFI from 'foliate-js/epubcfi.js';
 import { Overlayer } from 'foliate-js/overlayer.js';
@@ -18,6 +19,7 @@ import { useBookDataStore } from '@/store/bookDataStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useReaderStore } from '@/store/readerStore';
 import { useNotebookStore } from '@/store/notebookStore';
+import { useVocabularyStore } from '@/store/vocabularyStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useResponsiveSize } from '@/hooks/useResponsiveSize';
 import { useFoliateEvents } from '../../hooks/useFoliateEvents';
@@ -40,6 +42,11 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
   const { getConfig, saveConfig, getBookData, updateBooknotes } = useBookDataStore();
   const { getProgress, getView, getViewsById, getViewSettings } = useReaderStore();
   const { setNotebookVisible, setNotebookNewAnnotation } = useNotebookStore();
+  const { 
+    addWord, 
+    removeWord,
+    hasWord 
+  } = useVocabularyStore();
 
   useNotesSync(bookKey);
 
@@ -391,6 +398,75 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
     eventDispatcher.dispatch('tts-speak', { bookKey, range: selection.range });
   };
 
+  const handleVocabulary = () => {
+    if (!selection || !selection.text) return;
+    
+    // Check if the selection is inside a ruby tag
+    const range = selection.range;
+    if (!range) return;
+    
+    let rubyElement = null;
+    let lemma = null;
+    let wordType: 'word' | 'phrase' = 'word';
+    
+    // Find the ruby element containing the selection
+    let currentElement: Node | null = range.startContainer;
+    while (currentElement && currentElement.nodeType !== Node.ELEMENT_NODE) {
+      currentElement = currentElement.parentNode;
+    }
+    
+    // Traverse up to find ruby element
+    while (currentElement && currentElement.nodeName !== 'RUBY') {
+      currentElement = currentElement.parentNode;
+      if (currentElement === document.body) break;
+    }
+    
+    if (currentElement && currentElement.nodeName === 'RUBY') {
+      rubyElement = currentElement as HTMLElement;
+      
+      // 直接从 ruby 标签获取 lemma 属性
+      lemma = rubyElement.getAttribute('lemma');
+      
+      if (rubyElement.classList.contains('word')) {
+        wordType = 'word';
+      } else if (rubyElement.classList.contains('mwe')) {
+        wordType = 'phrase';
+      }
+    }
+    
+    // If not in a ruby tag or no lemma found, don't show vocabulary option
+    if (!lemma) {
+      return;
+    }
+    
+    // Toggle vocabulary status using lemma
+    let isAdded = false;
+    if (hasWord(lemma)) {
+      // Remove from vocabulary
+      removeWord(lemma);
+      isAdded = false;
+      eventDispatcher.dispatch('toast', {
+        type: 'info',
+        message: _(wordType === 'word' ? 'Word removed from vocabulary' : 'Phrase removed from vocabulary'),
+        timeout: 2000,
+      });
+    } else {
+      // Add to vocabulary
+      addWord(lemma, wordType);
+      isAdded = true;
+      eventDispatcher.dispatch('toast', {
+        type: 'success',
+        message: _(wordType === 'word' ? 'Word added to vocabulary' : 'Phrase added to vocabulary'),
+        timeout: 2000,
+      });
+    }
+    
+    // 触发局部词汇表变更事件，只更新当前视图
+    eventDispatcher.dispatch('vocabulary-changed-local', { lemma, wordType, isAdded });
+    
+    setShowAnnotPopup(false);
+  };
+
   const handleExportMarkdown = (event: CustomEvent) => {
     const { bookKey: exportBookKey } = event.detail;
     if (bookKey !== exportBookKey) return;
@@ -477,6 +553,27 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
   };
 
   const selectionAnnotated = selection?.annotated;
+  
+  // Check if selection is inside a ruby tag with word or mwe class
+  const isInAnnotationTag = () => {
+    if (!selection || !selection.range) return false;
+    
+    let currentElement: Node | null = selection.range.startContainer;
+    while (currentElement && currentElement.nodeType !== Node.ELEMENT_NODE) {
+      currentElement = currentElement.parentNode;
+    }
+    
+    while (currentElement && currentElement.nodeName !== 'RUBY') {
+      currentElement = currentElement.parentNode;
+      if (currentElement === document.body) return false;
+    }
+    
+    return currentElement && 
+           currentElement.nodeName === 'RUBY' && 
+           ((currentElement as HTMLElement).classList.contains('word') ||
+            (currentElement as HTMLElement).classList.contains('mwe'));
+  };
+  
   const buttons = [
     { tooltipText: _('Copy'), Icon: FiCopy, onClick: handleCopy },
     {
@@ -489,6 +586,8 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
     { tooltipText: _('Dictionary'), Icon: TbHexagonLetterD, onClick: handleDictionary },
     { tooltipText: _('Wikipedia'), Icon: FaWikipediaW, onClick: handleWikipedia },
     { tooltipText: _('Translate'), Icon: BsTranslate, onClick: handleTranslation },
+    // Only show vocabulary button if selection is inside an annotation or phrase tag
+    ...(isInAnnotationTag() ? [{ tooltipText: _('Vocabulary'), Icon: MdPublishedWithChanges, onClick: handleVocabulary }] : []),
     { tooltipText: _('Speak'), Icon: FaHeadphones, onClick: handleSpeakText },
   ];
 
