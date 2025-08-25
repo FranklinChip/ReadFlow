@@ -28,7 +28,9 @@ export function useAnnotationCSS(bookKey: string) {
       // 当注释功能关闭时，隐藏所有rt元素
       return `
         ruby.word rt,
-        ruby.mwe rt {
+        .mwe .annotation,
+        .PROPN .annotation
+        {
           display: none !important;
         }
       `;

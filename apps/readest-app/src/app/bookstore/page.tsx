@@ -9,7 +9,6 @@ import { useTheme } from '@/hooks/useTheme';
 import { useUICSS } from '@/hooks/useUICSS';
 
 import MainNavigation from '@/components/MainNavigation';
-import PageHeader from '@/components/PageHeader';
 import BookstoreHeader from './components/BookstoreHeader';
 import BookstoreGrid from './components/BookstoreGrid';
 

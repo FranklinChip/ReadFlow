@@ -222,7 +222,7 @@ const VocabularyPage = () => {
         >
           <div className="p-4">
             <p className="text-base-content mb-6">
-              Are you sure you want to delete "{wordToDelete}" from your vocabulary?
+              Are you sure you want to delete &ldquo;{wordToDelete}&rdquo; from your vocabulary?
             </p>
             <div className="flex gap-3 justify-end">
               <button

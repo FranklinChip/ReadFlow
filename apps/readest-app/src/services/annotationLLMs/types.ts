@@ -18,10 +18,17 @@ export interface ProperNounAnnotation {
   en: string;
 }
 
+export interface TokenUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
 export interface AnnotationResponse {
   mwes: MWEAnnotation[];
   proper_nouns: ProperNounAnnotation[];
   words: WordAnnotation[];
+  usage?: TokenUsage; // 可选的token使用统计
 }
 
 export interface AnnotationProvider {

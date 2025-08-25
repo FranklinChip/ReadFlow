@@ -4,7 +4,11 @@ import { useAnnotationCSS } from './useAnnotationCSS';
 import { useVocabularyStore } from '@/store/vocabularyStore';
 import { eventDispatcher } from '@/utils/event';
 
-export function useUnknownWordDisplay(bookKey: string, view: FoliateView | HTMLElement | null) {
+export function useUnknownWordDisplay(
+  bookKey: string, 
+  view: FoliateView | HTMLElement | null,
+  registerStatusUpdateCallback?: (callback: () => void) => (() => void)
+) {
   const processedDocsRef = useRef<Set<Document>>(new Set());
   const { generateCSS, settings } = useAnnotationCSS(bookKey);
   const { hasWord } = useVocabularyStore();
@@ -139,14 +143,28 @@ export function useUnknownWordDisplay(bookKey: string, view: FoliateView | HTMLE
 
   const injectCSS = useCallback((doc: Document) => {
     const id = 'annotation-styles';
-    const existingStyle = doc.getElementById(id);
     
-    // 总是更新CSS以反映最新设置
+    // 首先尝试注入到根文档（主窗口）
+    const rootDoc = window.document;
+    const rootExistingStyle = rootDoc.getElementById(id);
+    
+    if (rootExistingStyle) {
+      rootExistingStyle.textContent = generateCSS();
+    } else {
+      const rootStyle = rootDoc.createElement('style');
+      rootStyle.id = id;
+      rootStyle.textContent = generateCSS();
+      rootDoc.head.appendChild(rootStyle);
+    }
+    
+    // 然后也注入到当前文档（iframe）以确保兼容性
+    const existingStyle = doc.getElementById(id + '-iframe');
+    
     if (existingStyle) {
       existingStyle.textContent = generateCSS();
     } else {
       const style = doc.createElement('style');
-      style.id = id;
+      style.id = id + '-iframe';
       style.textContent = generateCSS();
       doc.head.appendChild(style);
     }
@@ -183,6 +201,20 @@ export function useUnknownWordDisplay(bookKey: string, view: FoliateView | HTMLE
   useEffect(() => {
     processDocuments();
   }, [processDocuments]);
+
+  // 监听章节注释状态变化，重新应用CSS
+  useEffect(() => {
+    if (registerStatusUpdateCallback) {
+      const unregister = registerStatusUpdateCallback(() => {
+        console.log('‼️ Chapter annotation status changed, reapplying CSS');
+        processDocuments();
+      });
+      
+      return unregister;
+    }
+    
+    return undefined;
+  }, [registerStatusUpdateCallback, processDocuments]);
 
   // 监听词汇表变更事件
   useEffect(() => {

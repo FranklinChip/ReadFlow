@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { FoliateView } from '@/types/view';
 import { useReaderStore } from '@/store/readerStore';
-import { getAnnotationProvider, WordAnnotation, ProperNounAnnotation, MWEAnnotation } from '@/services/annotationLLMs';
+import { getAnnotationProvider, WordAnnotation, ProperNounAnnotation, MWEAnnotation, TokenUsage } from '@/services/annotationLLMs';
 import { walkTextNodes } from '@/utils/walk';
 import { debounce } from '@/utils/debounce';
 
@@ -10,7 +10,6 @@ interface UseWordsAnnotationOptions {
   enabled?: boolean;
   retryAttempts?: number;
   retryDelay?: number;
-  preloadOffset?: number;
 }
 
 export function useWordsAnnotation(
@@ -22,244 +21,229 @@ export function useWordsAnnotation(
     provider = 'qwen', 
     enabled = true,
     retryAttempts = 3,
-    retryDelay = 1000,
-    preloadOffset = 3 // 增加预加载范围
+    retryDelay = 1000
   } = options;
 
-  const { getViewSettings } = useReaderStore();
+  const { getViewSettings, getViewState, getProgress } = useReaderStore();
   const viewSettings = getViewSettings(bookKey);
+  const viewState = getViewState(bookKey);
+  const progress = getProgress(bookKey);
 
   const enabledRef = useRef(enabled && viewSettings?.wordAnnotationEnabled);
+  
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const annotatedElements = useRef<Set<HTMLElement>>(new Set());
+  const annotatedElements = useRef<HTMLElement[]>([]);
   const allTextNodes = useRef<HTMLElement[]>([]);
   const processingQueue = useRef<Set<HTMLElement>>(new Set());
-  const isProcessingBatchRef = useRef(false);
-  const currentBatchElements = useRef<Set<HTMLElement>>(new Set());
-  const cancelCurrentProcessing = useRef<(() => void) | null>(null);
-  const pageSwitchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // 新增：LLM请求状态跟踪
-  const llmRequestsInProgress = useRef<Set<string>>(new Set()); // 跟踪正在进行的LLM请求
-  const hasStartedLLMRequests = useRef<boolean>(false); // 标记是否已经开始LLM请求
-  
-  // 新增：预处理状态管理
-  const preProcessingQueue = useRef<Set<HTMLElement>>(new Set());
-  const viewAnnotationStatus = useRef<Map<string, 'pending' | 'processing' | 'completed'>>(new Map());
-  const currentViewId = useRef<string>('');
-  const pendingViewElements = useRef<Map<string, HTMLElement[]>>(new Map());
+  // 新增：状态更新回调管理
+  const statusUpdateCallbacksRef = useRef<Set<() => void>>(new Set());
 
-  // 生成视图ID的函数
-  const generateViewId = useCallback((elements: HTMLElement[]): string => {
-    if (elements.length === 0) return '';
-    // 使用第一个和最后一个元素的文本内容片段生成ID
-    const firstText = elements[0]?.textContent?.substring(0, 20) || '';
-    const lastText = elements[elements.length - 1]?.textContent?.substring(0, 20) || '';
-    return btoa(firstText + lastText).substring(0, 16);
+  // 新增：注册状态更新回调函数
+  const registerStatusUpdateCallback = useCallback((callback: () => void) => {
+    statusUpdateCallbacksRef.current.add(callback);
+    
+    // 返回取消注册的函数
+    return () => {
+      statusUpdateCallbacksRef.current.delete(callback);
+    };
   }, []);
 
-  // 检查当前视图是否需要注释
-  const checkCurrentViewAnnotationStatus = useCallback((elements: HTMLElement[]): boolean => {
-    // 过滤出有效的文本元素（长度大于3的才考虑）
-    const validElements = elements.filter(el => {
-      const text = el.textContent?.trim();
-      return text && text.length > 3;
+  // 新增：触发状态更新回调
+  const triggerStatusUpdate = useCallback(() => {
+    console.log('📌 Triggering annotation status update callbacks');
+    statusUpdateCallbacksRef.current.forEach(callback => {
+      try {
+        callback();
+      } catch (error) {
+        console.error('Error in status update callback:', error);
+      }
     });
-    
-    // 找出未注释的有效元素
-    const unannotatedElements = validElements.filter(el => {
-      // 检查是否在我们的已注释列表中
-      const isInAnnotatedList = annotatedElements.current.has(el);
-      
-      // 检查是否已经有注释标签
-      const hasAnnotationTags = el.querySelector('ruby.word, .mwe, .PROPN') !== null;
-      
-      // 只有既不在已注释列表中，也没有注释标签的元素才算未注释
-      return !isInAnnotatedList && !hasAnnotationTags;
-    });
-    
-    const isFullyAnnotated = unannotatedElements.length === 0;
-    
-    console.log(`📊 View annotation status:`);
-    console.log(`  - Total elements: ${elements.length}`);
-    console.log(`  - Valid elements (>3 chars): ${validElements.length}`);
-    console.log(`  - Unannotated elements: ${unannotatedElements.length}`);
-    console.log(`  - Fully annotated: ${isFullyAnnotated}`);
-    
-    // 如果有未注释的元素，打印具体信息
-    if (unannotatedElements.length > 0) {
-      console.log(`  - First unannotated: "${unannotatedElements[0]?.textContent?.substring(0, 50)}..."`);
-    }
-    
-    return isFullyAnnotated;
   }, []);
 
-  // 触发全局等待状态事件
-  const emitAnnotationStart = useCallback(() => {
-    console.log('🚦 Emitting llm-annotation-start event');
-    window.dispatchEvent(new CustomEvent('llm-annotation-start'));
+  // 切换注释可见性（类似translation的toggleTranslationVisibility）
+  const toggleAnnotationVisibility = useCallback((visible: boolean) => {
+    annotatedElements.current.forEach((element) => {
+      const annotationTargets = element.querySelectorAll('ruby.word');
+      annotationTargets.forEach((target) => {
+        if (visible) {
+          target.classList.remove('hidden');
+        } else {
+          target.classList.add('hidden');
+        }
+      });
+    });
+  }, []);
+
+  // 观察文本节点（类似translation的observeTextNodes）
+  const observeTextNodes = useCallback(() => {
+    if (!view || !enabledRef.current) return;
     
-    // 添加CSS隐藏注释内容
-    if (view) {
-      const docs: Document[] = [];
+    const observer = createAnnotationObserver();
+    observerRef.current = observer;
+    const nodes = walkTextNodes(view);
+    console.log('Observing text nodes for annotation:', nodes.length);
+    allTextNodes.current = nodes;
+    nodes.forEach((el) => observer.observe(el));
+  }, [view]);
+
+  // 更新注释（类似translation的updateTranslation）
+  const updateAnnotation = useCallback(() => {
+    annotatedElements.current.forEach((element) => {
+      // 移除已有的ruby标签
+      const rubyElements = element.querySelectorAll('ruby.word');
+      rubyElements.forEach((ruby) => {
+        const textContent = ruby.textContent || '';
+        ruby.replaceWith(document.createTextNode(textContent));
+      });
       
-      if ('renderer' in view && view.renderer && typeof view.renderer.getContents === 'function') {
-        const contents = view.renderer.getContents();
-        contents.forEach(({ doc }) => {
-          if (doc) docs.push(doc);
+      // 恢复原始文本
+      if (element.hasAttribute('original-text-stored')) {
+        const originalTexts = JSON.parse(element.getAttribute('original-text-nodes') || '[]');
+        const textNodes = Array.from(element.childNodes).filter(
+          (node) => node.nodeType === Node.TEXT_NODE
+        ) as Text[];
+        
+        textNodes.forEach((textNode, index) => {
+          if (originalTexts[index] !== undefined) {
+            textNode.textContent = originalTexts[index];
+          }
         });
-      } else if (view instanceof HTMLElement) {
-        const doc = view.ownerDocument;
-        if (doc) docs.push(doc);
+        element.removeAttribute('original-text-stored');
+        element.removeAttribute('original-text-nodes');
       }
       
-      docs.forEach(doc => {
-        // 先移除可能存在的旧样式
-        const existingStyle = doc.getElementById('annotation-processing-style');
-        if (existingStyle) {
-          existingStyle.remove();
+      // 清理注释相关的类名和属性
+      element.classList.remove('annotated', 'processing-annotation');
+      element.removeAttribute('word-annotation-mark');
+    });
+
+    annotatedElements.current = [];
+    if (viewSettings?.wordAnnotationEnabled && view) {
+      recreateAnnotationObserver();
+    }
+  }, [viewSettings?.wordAnnotationEnabled, view]);
+
+  // 创建注释观察器（类似translation的createTranslationObserver）
+  const createAnnotationObserver = useCallback(() => {
+    return new IntersectionObserver(
+      (entries) => {
+        let beforeIntersectedElement: HTMLElement | null = null;
+        let lastIntersectedElement: HTMLElement | null = null;
+        
+        for (const entry of entries) {
+          if (!entry.isIntersecting) {
+            if (!lastIntersectedElement) {
+              beforeIntersectedElement = entry.target as HTMLElement;
+            }
+            continue;
+          }
+          
+          const currentElement = entry.target as HTMLElement;
+          annotateElement(currentElement);
+          lastIntersectedElement = currentElement;
         }
         
-        // 添加新的处理样式
-        const style = doc.createElement('style');
-        style.id = 'annotation-processing-style';
-        style.textContent = `
-          ruby.word rt,
-          .mwe .annotation,
-          .PROPN .annotation {
-            display: none !important;
-          }
-        `;
-        doc.head.appendChild(style);
-        console.log('Added processing style to hide annotations');
-      });
-    }
-  }, [view]);
-
-  const emitAnnotationEnd = useCallback(() => {
-    console.log('🚦 Emitting llm-annotation-end event');
-    window.dispatchEvent(new CustomEvent('llm-annotation-end'));
-    
-    // 移除隐藏注释的CSS
-    if (view) {
-      const docs: Document[] = [];
-      
-      if ('renderer' in view && view.renderer && typeof view.renderer.getContents === 'function') {
-        const contents = view.renderer.getContents();
-        contents.forEach(({ doc }) => {
-          if (doc) docs.push(doc);
-        });
-      } else if (view instanceof HTMLElement) {
-        const doc = view.ownerDocument;
-        if (doc) docs.push(doc);
-      }
-      
-      docs.forEach(doc => {
-        // 强制移除所有可能的处理样式
-        const existingStyles = doc.querySelectorAll('#annotation-processing-style');
-        existingStyles.forEach(style => {
-          console.log('Removing processing style:', style);
-          style.remove();
-        });
+        if (beforeIntersectedElement) {
+          annotateElement(beforeIntersectedElement);
+        }
         
-        // 为了确保移除，也尝试通过类名删除
-        const allStyles = doc.querySelectorAll('style');
-        allStyles.forEach(style => {
-          if (style.textContent?.includes('ruby.word rt') && 
-              style.textContent?.includes('display: none !important')) {
-            console.log('Removing orphaned processing style:', style);
-            style.remove();
-          }
-        });
-      });
-      
-      // 延迟触发重新渲染以确保样式更新
-      setTimeout(() => {
-        console.log('Processing styles cleanup completed');
-      }, 100);
-    }
-  }, [view]);
-
-  // 取消当前处理的函数 - 智能取消逻辑
-  const cancelProcessing = useCallback(() => {
-    // 检查是否已经开始LLM请求
-    if (hasStartedLLMRequests.current && llmRequestsInProgress.current.size > 0) {
-      console.log('🔄 LLM requests already in progress, continuing current task to prevent resource waste');
-      console.log('Active LLM requests:', llmRequestsInProgress.current.size);
-      // 不取消，让当前任务完成
-      return;
-    }
-    
-    console.log('⏹️ No LLM requests in progress, proceeding with cancellation');
-    
-    // 重置LLM状态
-    hasStartedLLMRequests.current = false;
-    llmRequestsInProgress.current.clear();
-    
-    // 取消当前批处理
-    isProcessingBatchRef.current = false;
-    
-    // 清理处理队列
-    processingQueue.current.clear();
-    currentBatchElements.current.clear();
-    
-    // 触发结束事件（这会清理样式）
-    emitAnnotationEnd();
-    
-    // 执行取消回调
-    if (cancelCurrentProcessing.current) {
-      cancelCurrentProcessing.current();
-      cancelCurrentProcessing.current = null;
-    }
-    
-    console.log('Processing cancelled and cleaned up');
-  }, [emitAnnotationEnd]);
-
-  // 清理已注释元素的函数（用于重新处理）
-  const clearAnnotatedElements = useCallback(() => {
-    annotatedElements.current.clear();
-    console.log('Cleared annotated elements');
+        if (lastIntersectedElement) {
+          preAnnotateNextElements(lastIntersectedElement, 2);
+        }
+      },
+      {
+        rootMargin: '1280px',
+        threshold: 0,
+      }
+    );
   }, []);
 
-  // 文本 token 化函数
+  // 预注释下一批元素（类似translation的preTranslateNextElements）
+  const preAnnotateNextElements = useCallback((currentElement: HTMLElement, count: number) => {
+    if (!allTextNodes.current || count <= 0) return;
+    
+    const currentIndex = allTextNodes.current.indexOf(currentElement);
+    if (currentIndex === -1) return;
+
+    const nextElements = allTextNodes.current.slice(currentIndex + 1, currentIndex + 1 + count);
+    nextElements.forEach((element, index) => {
+      setTimeout(() => {
+        annotateElement(element);
+      }, index * 300); // 比翻译稍快一些
+    });
+  }, []);
+
+  // 重新创建注释观察器（类似translation的recreateTranslationObserver）
+  const recreateAnnotationObserver = useCallback(() => {
+    const observer = createAnnotationObserver();
+    observerRef.current?.disconnect();
+    observerRef.current = observer;
+    allTextNodes.current.forEach((el) => observer.observe(el));
+  }, [createAnnotationObserver]);
+
+  // 检查元素是否已被注释
+  const isElementAnnotated = useCallback((element: HTMLElement): boolean => {
+    return element.hasAttribute('word-annotation-mark') || 
+           element.querySelectorAll('ruby.word').length > 0 ||
+           element.classList.contains('annotated') ||
+           element.classList.contains('processing-annotation');
+  }, []);
+
+  // 文本 token 化函数 - 简化版本：单词和符号分别作为token
   const tokenizeText = useCallback((text: string): string[] => {
-    // 改进的文本分词，保留空格信息避免额外空格问题
+    // 首先处理换行符问题：将\n替换为空格，避免单词被错误合并
+    const normalizedText = text.replace(/\n/g, ' ');
+    
     const tokens: string[] = [];
-    const regex = /(\s+)|(\b\w+(?:'\w+)?\b|\b\w+(?:-\w+)+\b|[^\w\s])/g;
+    const regex = /(\s+)|(\w+|[^\w\s])/g;
     let match;
     
-    while ((match = regex.exec(text)) !== null) {
+    while ((match = regex.exec(normalizedText)) !== null) {
       if (match[1]) {
-        // 空格token
-        tokens.push(match[1]);
+        tokens.push(match[1]); // 空白字符
       } else if (match[2]) {
-        // 单词或符号token
-        tokens.push(match[2]);
+        tokens.push(match[2]); // 单词或符号
       }
     }
     
     return tokens;
   }, []);
 
-  // 创建单个单词的ruby标签（带索引）
+  // 创建单个单词的ruby标签
   const createSingleWordRuby = useCallback((word: string, annotation: WordAnnotation, index: number): string => {
     return `<ruby class="word" lemma="${annotation.lemma}" data-word-index="${index}">${word}<rt class="zh-meaning">${annotation.zh}</rt><rt class="en-meaning">${annotation.en}</rt></ruby>`;
   }, []);
 
-  // 顺序匹配单词的函数 - 使用滑动窗口（带索引）
+  // 标准化文本函数，处理中英文引号等字符差异
+  const normalizeText = useCallback((text: string): string => {
+    return text
+      .toLowerCase()
+      // 统一各种引号
+      .replace(/[''`]/g, "'")      // 将中文单引号、反引号统一为英文单引号
+      .replace(/[""]/g, '"')       // 将中文双引号统一为英文双引号
+      // 统一各种连字符和短横线
+      .replace(/[—–−]/g, '-')      // 将长短横线统一为连字符
+      // 统一省略号
+      .replace(/…/g, '...')
+      // 去除零宽字符
+      .replace(/[\u200B-\u200D\uFEFF]/g, '');
+  }, []);
+
+  // 顺序匹配单词的函数 - 新版本：从前往后顺序匹配，连续3次失败后跳过
   const createOrderedWordRubyAnnotations = useCallback((text: string, annotations: { words: WordAnnotation[] }): string => {
     const tokens = tokenizeText(text);
     const llmWords = annotations.words;
     
-    console.log('Original tokens:', tokens);
-    console.log('LLM words:', llmWords.map(w => w.word));
-
     const resultTokens = [...tokens];
-    let llmIndex = 0; // LLM 单词索引
-    let tokenIndex = 0; // 当前 token 索引
-    let wordIndex = 0; // ruby标签索引
+    let llmIndex = 0;
+    let tokenIndex = 0;
+    let wordIndex = 0;
+    let totalMatched = 0;
+    let consecutiveFailures = 0;
+    const MAX_CONSECUTIVE_FAILURES = 3;
 
-    const processedRanges: Set<number> = new Set(); // 记录已处理的 token 索引
+    const processedRanges: Set<number> = new Set();
 
     while (llmIndex < llmWords.length && tokenIndex < tokens.length) {
       const currentWord = llmWords[llmIndex];
@@ -268,132 +252,146 @@ export function useWordsAnnotation(
         continue;
       }
 
-      const windowSize = 5;
-      
-      // 创建滑动窗口
-      const windowEnd = Math.min(tokenIndex + windowSize, tokens.length);
       let found = false;
+      let currentFailureStartToken = tokenIndex; // 记录本次单词开始搜索的位置
 
-      // 在窗口内搜索匹配
-      for (let searchIndex = tokenIndex; searchIndex < windowEnd; searchIndex++) {
-        if (processedRanges.has(searchIndex)) continue;
+      // 从当前位置开始向前搜索，但限制搜索范围
+      const maxSearchDistance = 10; // 最多向前搜索10个token
+      const searchEnd = Math.min(tokenIndex + maxSearchDistance, tokens.length);
 
-        // 跳过空格token
+      for (let searchIndex = tokenIndex; searchIndex < searchEnd; searchIndex++) {
+        if (processedRanges.has(searchIndex)) {
+          continue;
+        }
+
         const token = tokens[searchIndex];
-        if (!token || /^\s+$/.test(token)) continue;
+        if (!token || /^\s+$/.test(token)) {
+          continue;
+        }
         
-        const tokenLower = token.toLowerCase();
-        const wordLower = currentWord.word.toLowerCase();
+        const tokenLower = normalizeText(token);
+        const wordLower = normalizeText(currentWord.word);
 
+        // 1. 单token匹配
         if (tokenLower === wordLower) {
-          // 直接匹配成功
-          if (!processedRanges.has(searchIndex)) {
-            resultTokens[searchIndex] = createSingleWordRuby(token, currentWord, wordIndex);
-            processedRanges.add(searchIndex);
-            wordIndex++; // 增加ruby索引
-          }
+          resultTokens[searchIndex] = createSingleWordRuby(token, currentWord, wordIndex);
+          processedRanges.add(searchIndex);
+          wordIndex++;
+          totalMatched++;
           tokenIndex = searchIndex + 1;
+          consecutiveFailures = 0; // 重置连续失败计数
           found = true;
           break;
         }
 
-        // 尝试跨 token 合并匹配（处理连字符词等）
-        if (searchIndex < windowEnd - 1) {
-          const combinations = [
-            // 连字符组合: word1-word2
-            { pattern: [searchIndex, searchIndex + 1, searchIndex + 2], joiner: '' },
-            // 更复杂的组合
-            { pattern: [searchIndex, searchIndex + 1, searchIndex + 2, searchIndex + 3], joiner: '' },
-            { pattern: [searchIndex, searchIndex + 1, searchIndex + 2, searchIndex + 3, searchIndex + 4], joiner: '' }
-          ];
-
-          for (const combo of combinations) {
-            const { pattern, joiner } = combo;
-            const validIndices = pattern.filter(idx => idx < tokens.length && !processedRanges.has(idx) && tokens[idx] && !/^\s+$/.test(tokens[idx]));
-            
-            if (validIndices.length >= 2) {
-              const combinedText = validIndices.map(idx => tokens[idx]).join(joiner);
-              const combinedLower = combinedText.toLowerCase();
-
-              if (combinedLower === wordLower) {
-                // 合并匹配成功
-                const ruby = createSingleWordRuby(combinedText, currentWord, wordIndex);
-                
-                // 替换第一个token为ruby，其余设为空字符串（不能删除空格token）
-                const firstIndex = validIndices[0];
-                if (firstIndex !== undefined) {
-                  resultTokens[firstIndex] = ruby;
-                  for (let i = 1; i < validIndices.length; i++) {
-                    const idx = validIndices[i];
-                    if (idx !== undefined) {
-                      resultTokens[idx] = '';
-                    }
-                  }
-                  
-                  validIndices.forEach(idx => processedRanges.add(idx));
-                  const lastIndex = validIndices[validIndices.length - 1];
-                  if (lastIndex !== undefined) {
-                    tokenIndex = lastIndex + 1;
-                  }
-                  wordIndex++; // 增加ruby索引
-                  found = true;
-                  break;
-                }
-              }
+        // 2. 跨token合并匹配 (2-4个token) - 只匹配真正需要合并的情况
+        for (let combineLength = 2; combineLength <= Math.min(4, searchEnd - searchIndex); combineLength++) {
+          const endIndex = searchIndex + combineLength;
+          
+          // 检查组合范围内的token是否已被处理
+          let hasProcessedToken = false;
+          for (let i = searchIndex; i < endIndex; i++) {
+            if (processedRanges.has(i)) {
+              hasProcessedToken = true;
+              break;
             }
           }
           
-          if (found) break;
+          if (hasProcessedToken) {
+            continue;
+          }
+
+          // 提取并合并token
+          const combineTokens = tokens.slice(searchIndex, endIndex);
+          const combinedText = normalizeText(combineTokens.join(''));
+          const combinedDisplay = combineTokens.join('');
+
+          // 关键修复：严格检查这个组合是否真的有意义
+          // 1. 如果组合后的文本包含空格，且LLM单词不包含空格，则跳过
+          const hasSpaceInCombined = combinedDisplay.includes(' ');
+          const hasSpaceInWord = currentWord.word.includes(' ');
+          
+          if (hasSpaceInCombined && !hasSpaceInWord) {
+            continue;
+          }
+
+          // 2. 检查是否包含多个单词token（非标点符号、非空格）
+          const wordTokensInCombine = combineTokens.filter(t => t && !/^\s+$/.test(t) && /\w/.test(t));
+          if (wordTokensInCombine.length > 1 && !hasSpaceInWord) {
+            continue;
+          }
+
+          if (combinedText === wordLower) {
+            // 创建跨token的ruby标签 - 但要确保合理性
+            const multiTokenRuby = createSingleWordRuby(combinedDisplay, currentWord, wordIndex);
+            
+            // 只在第一个token处创建ruby标签，其他token保持原样但标记为已处理
+            resultTokens[searchIndex] = multiTokenRuby;
+            for (let i = searchIndex + 1; i < endIndex; i++) {
+              // 保持原始token，但标记为已处理（这样不会影响其他匹配）
+              processedRanges.add(i);
+            }
+            
+            processedRanges.add(searchIndex);
+            wordIndex++;
+            totalMatched++;
+            tokenIndex = endIndex;
+            consecutiveFailures = 0; // 重置连续失败计数
+            found = true;
+            break;
+          }
         }
+
+        if (found) break;
       }
 
       if (!found) {
-        // 如果在当前窗口没找到，移动到下一个非空格token
-        do {
-          tokenIndex++;
-        } while (tokenIndex < tokens.length && tokens[tokenIndex] && /^\s+$/.test(tokens[tokenIndex]!));
+        consecutiveFailures++;
         
-        if (tokenIndex >= tokens.length) {
-          // 如果token用完了但还有LLM单词，跳过剩余的LLM单词
-          console.warn(`Could not find token for LLM word: ${currentWord.word}`);
-          llmIndex++;
+        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          llmIndex++; // 跳过这个LLM单词
+          consecutiveFailures = 0; // 重置计数
+          // tokenIndex保持不变，从当前位置开始匹配下一个单词
+        } else {
+          // 没有达到最大失败次数，继续向前移动token指针
+          tokenIndex = currentFailureStartToken + 1;
+          
+          // 跳过空白token
+          while (tokenIndex < tokens.length && tokens[tokenIndex] && /^\s+$/.test(tokens[tokenIndex]!)) {
+            tokenIndex++;
+          }
+          
+          if (tokenIndex >= tokens.length) {
+            llmIndex++;
+            consecutiveFailures = 0;
+          }
         }
       } else {
         llmIndex++;
       }
     }
 
+    console.log(`🎯 Word matching completed: ${totalMatched}/${llmWords.length} words matched (${((totalMatched / llmWords.length) * 100).toFixed(1)}%)`);
+    
     return resultTokens.join('');
-  }, [tokenizeText, createSingleWordRuby]);
+  }, [tokenizeText, createSingleWordRuby, normalizeText]);
 
   // 从HTML中提取ruby单词数组（基于索引）
   const extractRubyWordsArray = useCallback((htmlText: string): string[] => {
-    console.log('🔍 extractRubyWordsArray called');
-    
     // 安全检查
     if (!htmlText || typeof htmlText !== 'string') {
-      console.log('❌ Invalid HTML text input:', typeof htmlText, htmlText);
       return [];
     }
     
-    console.log('🔍 HTML text length:', htmlText.length);
-    console.log('🔍 HTML text sample (first 300 chars):', htmlText.substring(0, 300) + '...');
-    
     // 首先检查是否包含ruby标签
     const hasRubyTags = htmlText.includes('<ruby');
-    console.log('🔍 HTML contains ruby tags:', hasRubyTags);
-    
     if (!hasRubyTags) {
-      console.log('⚠️ No ruby tags found in HTML, returning empty array');
       return [];
     }
     
     // 检查是否包含data-word-index属性
     const hasWordIndex = htmlText.includes('data-word-index');
-    console.log('🔍 HTML contains data-word-index:', hasWordIndex);
-    
     if (!hasWordIndex) {
-      console.log('⚠️ No data-word-index attributes found in HTML, returning empty array');
       return [];
     }
     
@@ -402,47 +400,28 @@ export function useWordsAnnotation(
     let match;
     let matchCount = 0;
     
-    console.log('🔍 Starting regex matching with pattern:', rubyPattern.source);
-    
     try {
       while ((match = rubyPattern.exec(htmlText)) !== null) {
-        matchCount++;
-        const index = parseInt(match[1]!, 10);
+        const wordIndex = parseInt(match[1]!, 10);
         const rubyContent = match[2]!;
         
-        console.log(`🔍 Found ruby match ${matchCount}:`, {
-          index,
-          fullMatch: match[0].substring(0, 100) + '...',
-          content: rubyContent.substring(0, 50) + '...'
-        });
+        // 提取ruby标签内的主要单词内容（去掉rt标签）
+        const wordText = rubyContent.replace(/<rt[^>]*>.*?<\/rt>/gs, '').trim();
         
-        // 提取ruby标签内的实际单词（去除rt标签和多余空白）
-        const wordText = rubyContent.replace(/<rt[^>]*>.*?<\/rt>/gs, '').replace(/\s+/g, ' ').trim();
-        
-        console.log(`🔍 Extracted word text: "${wordText}" at index ${index}`);
-        
-        // 确保数组足够大
-        while (rubyWords.length <= index) {
+        // 确保数组大小足够
+        while (rubyWords.length <= wordIndex) {
           rubyWords.push('');
         }
         
-        rubyWords[index] = wordText.toLowerCase();
-        
-        // 防止无限循环
-        if (matchCount > 1000) {
-          console.warn('⚠️ Too many matches, breaking to prevent infinite loop');
-          break;
-        }
+        rubyWords[wordIndex] = wordText.toLowerCase();
+        matchCount++;
       }
     } catch (error) {
       console.error('❌ Error during regex matching:', error);
       return [];
     }
     
-    console.log(`🔍 Total ruby matches found: ${matchCount}`);
-    console.log('🔍 Final ruby words array:', rubyWords);
-    console.log('🔍 Ruby words array length:', rubyWords.length);
-    console.log('🔍 Non-empty words in array:', rubyWords.filter(w => w.length > 0).length);
+    console.log(`🔍 Extracted ${matchCount} ruby words for phrase matching`);
     
     return rubyWords;
   }, []);
@@ -452,12 +431,9 @@ export function useWordsAnnotation(
     const phraseWords = targetPhrase.toLowerCase().split(/\s+/).filter(w => w.length > 0);
     if (phraseWords.length === 0) return null;
     
-    console.log(`🔍 matchPhraseWithIndexes: "${targetPhrase}"`);
-    console.log(`🔍 Target phrase words:`, phraseWords);
-    console.log(`🔍 Ruby words array:`, rubyWords);
-    console.log(`🔍 Ruby words length: ${rubyWords.length}, phrase words length: ${phraseWords.length}`);
+    let bestMatch: { startIndex: number, endIndex: number, matchedCount: number } | null = null;
     
-    // 在ruby单词数组中寻找连续匹配（严格模式）
+    // 在ruby单词数组中寻找匹配
     for (let searchStart = 0; searchStart < rubyWords.length; searchStart++) {
       const startWord = rubyWords[searchStart];
       
@@ -468,55 +444,36 @@ export function useWordsAnnotation(
       
       // 检查是否匹配第一个词组单词
       if (startWord === phraseWords[0]) {
-        console.log(`\n🔍 Found potential start at index ${searchStart}: "${startWord}"`);
+        // 尝试匹配完整词组
+        const matchedWords: number[] = [searchStart];
+        let currentPhraseIndex = 1;
+        let currentSearchIndex = searchStart + 1;
+        let skippedNonEmpty = 0; // 跳过的非空单词计数
         
-        let matchedWords: number[] = [searchStart]; // 记录匹配的索引
-        let currentPhraseIndex = 1; // 下一个要匹配的词组单词
-        let currentSearchIndex = searchStart + 1; // 下一个搜索位置
-        
-        // 尝试匹配剩余的词组单词
         while (currentPhraseIndex < phraseWords.length && currentSearchIndex < rubyWords.length) {
           const targetWord = phraseWords[currentPhraseIndex]!;
-          let found = false;
+          const searchWord = rubyWords[currentSearchIndex];
           
-          console.log(`  🔍 Looking for phrase word "${targetWord}" starting from index ${currentSearchIndex}`);
-          
-          // 在限定范围内寻找下一个单词（最多跳过2个非空单词）
-          let skippedNonEmpty = 0;
-          for (let i = currentSearchIndex; i < rubyWords.length; i++) {
-            const rubyWord = rubyWords[i];
-            
-            // 跳过空字符串
-            if (!rubyWord || rubyWord.length === 0) {
-              console.log(`    ⚠️ Skipping empty at index ${i}`);
-              continue;
-            }
-            
-            console.log(`    🔍 Checking index ${i}: "${rubyWord}" vs "${targetWord}"`);
-            
-            if (rubyWord === targetWord) {
-              console.log(`    ✅ Match found at index ${i}`);
-              matchedWords.push(i);
-              currentSearchIndex = i + 1;
-              currentPhraseIndex++;
-              found = true;
-              break;
-            }
-            
-            // 非空但不匹配的单词
-            skippedNonEmpty++;
-            console.log(`    ❌ Non-matching word "${rubyWord}", skipped: ${skippedNonEmpty}`);
-            
-            // 如果跳过太多非空单词，放弃这次匹配
-            if (skippedNonEmpty > 2) {
-              console.log(`    ❌ Skipped too many non-matching words (${skippedNonEmpty}), giving up`);
-              break;
-            }
+          if (!searchWord || searchWord.length === 0) {
+            // 跳过空位置
+            currentSearchIndex++;
+            continue;
           }
           
-          if (!found) {
-            console.log(`  ❌ Could not find "${targetWord}", breaking`);
-            break;
+          if (searchWord === targetWord) {
+            matchedWords.push(currentSearchIndex);
+            currentPhraseIndex++;
+            currentSearchIndex++;
+            skippedNonEmpty = 0; // 重置跳过计数
+          } else {
+            // 不匹配，跳过这个单词
+            currentSearchIndex++;
+            skippedNonEmpty++;
+            
+            // 如果跳过太多不匹配的单词，放弃这次尝试
+            if (skippedNonEmpty > 3) {
+              break;
+            }
           }
         }
         
@@ -524,35 +481,87 @@ export function useWordsAnnotation(
         if (currentPhraseIndex === phraseWords.length) {
           const startIndex = matchedWords[0]!;
           const endIndex = matchedWords[matchedWords.length - 1]!;
-          console.log(`🎯 Found complete phrase match:`);
-          console.log(`  - Matched words at indexes: [${matchedWords.join(', ')}]`);
-          console.log(`  - Range: ${startIndex} to ${endIndex}`);
-          console.log(`  - Matched ${phraseWords.length}/${phraseWords.length} words`);
           return { startIndex, endIndex };
         } else {
-          console.log(`❌ Incomplete match: ${currentPhraseIndex}/${phraseWords.length} words found`);
+          // 计算匹配度
+          const matchRatio = currentPhraseIndex / phraseWords.length;
+          
+          // 如果匹配度达到70%且至少匹配了2个单词，记录为候选
+          if (matchRatio >= 0.7 && currentPhraseIndex >= 2 && matchedWords.length >= 2) {
+            const startIndex = matchedWords[0]!;
+            const endIndex = matchedWords[matchedWords.length - 1]!;
+            
+            if (!bestMatch || currentPhraseIndex > bestMatch.matchedCount) {
+              bestMatch = { startIndex, endIndex, matchedCount: currentPhraseIndex };
+            }
+          }
+        }
+      }
+      
+      // 如果当前词没有匹配第一个词组单词，但我们正在寻找后续单词（部分匹配策略）
+      for (let phraseIndex = 1; phraseIndex < phraseWords.length; phraseIndex++) {
+        if (startWord === phraseWords[phraseIndex]) {
+          // 从这个位置开始尝试匹配剩余部分
+          const matchedWords: number[] = [searchStart];
+          let currentPhraseIndex = phraseIndex + 1;
+          let currentSearchIndex = searchStart + 1;
+          let skippedNonEmpty = 0;
+          
+          while (currentPhraseIndex < phraseWords.length && currentSearchIndex < rubyWords.length) {
+            const targetWord = phraseWords[currentPhraseIndex]!;
+            const searchWord = rubyWords[currentSearchIndex];
+            
+            if (!searchWord || searchWord.length === 0) {
+              currentSearchIndex++;
+              continue;
+            }
+            
+            if (searchWord === targetWord) {
+              matchedWords.push(currentSearchIndex);
+              currentPhraseIndex++;
+              currentSearchIndex++;
+              skippedNonEmpty = 0;
+            } else {
+              currentSearchIndex++;
+              skippedNonEmpty++;
+              
+              if (skippedNonEmpty > 3) {
+                break;
+              }
+            }
+          }
+          
+          // 计算总匹配数（包括之前匹配的一个词）
+          const totalMatched = 1 + (currentPhraseIndex - phraseIndex - 1);
+          const matchRatio = totalMatched / phraseWords.length;
+          
+          if (matchRatio >= 0.7 && totalMatched >= 2 && matchedWords.length >= 2) {
+            const startIndex = matchedWords[0]!;
+            const endIndex = matchedWords[matchedWords.length - 1]!;
+            
+            if (!bestMatch || totalMatched > bestMatch.matchedCount) {
+              bestMatch = { startIndex, endIndex, matchedCount: totalMatched };
+            }
+          }
+          
+          break; // 只尝试第一个匹配的后续单词
         }
       }
     }
     
-    console.log(`❌ No match found for phrase "${targetPhrase}"`);
+    if (bestMatch) {
+      return { startIndex: bestMatch.startIndex, endIndex: bestMatch.endIndex };
+    }
+    
     return null;
   }, []);
 
   // 创建基于索引的词组和专有名词注释
   const createIndexBasedPhraseAnnotations = useCallback((htmlText: string, annotations: { mwes: MWEAnnotation[], proper_nouns: ProperNounAnnotation[] }): string => {
-    console.log('🔍 createIndexBasedPhraseAnnotations called with:');
-    console.log('  - HTML text length:', htmlText.length);
-    console.log('  - HTML preview:', htmlText.substring(0, 200) + '...');
-    console.log('  - MWEs count:', annotations.mwes.length);
-    console.log('  - Proper nouns count:', annotations.proper_nouns.length);
-    
     // 首先提取ruby单词数组
     const rubyWords = extractRubyWordsArray(htmlText);
-    console.log('🔍 Extracted ruby words:', rubyWords);
     
     if (rubyWords.length === 0) {
-      console.log('❌ No ruby words found, skipping phrase annotation');
       return htmlText;
     }
     
@@ -564,84 +573,59 @@ export function useWordsAnnotation(
       .filter(item => item.text && item.text.trim())
       .sort((a, b) => b.text.length - a.text.length);
 
-    console.log('🔍 All phrases to process:', allPhrases.map(item => `"${item.text}" (${item.type})`));
-    console.log('🔍 Processing phrases and proper nouns with index-based matching:', allPhrases.length, 'total items');
-
     let resultHTML = htmlText;
     const processedRanges = new Set<string>(); // 记录已处理的索引范围
+    let processedCount = 0;
 
     for (const item of allPhrases) {
       const phrase = item.text.trim();
-      console.log(`\n🔍 Processing phrase: "${phrase}" (${item.type})`);
       
       // 使用索引匹配查找词组
       const match = matchPhraseWithIndexes(rubyWords, phrase);
-      console.log('🔍 Match result:', match);
       
       if (!match) {
-        console.log(`❌ No match found for phrase "${phrase}"`);
         continue;
       }
       
       const { startIndex, endIndex } = match;
       const rangeKey = `${startIndex}-${endIndex}`;
-      console.log(`🔍 Found match for "${phrase}" at range ${rangeKey}`);
       
       // 检查是否已经处理过这个范围
       if (processedRanges.has(rangeKey)) {
-        console.log(`⚠️ Range ${rangeKey} already processed, skipping`);
         continue;
       }
       
       // 标记这个范围为已处理
       processedRanges.add(rangeKey);
       
-      console.log(`✅ Processing phrase "${phrase}" at indexes ${startIndex}-${endIndex}`);
-      
       // 找到对应的ruby标签范围
       const startPattern = new RegExp(`<ruby[^>]*data-word-index="${startIndex}"[^>]*>`, 'g');
-      console.log('🔍 Start pattern:', startPattern.source);
       
-      let startMatch = startPattern.exec(resultHTML);
-      console.log('🔍 Start match result:', startMatch);
+      const startMatch = startPattern.exec(resultHTML);
       
       if (!startMatch) {
-        console.log(`❌ Could not find start ruby tag for index ${startIndex}`);
         continue;
       }
       
-      console.log(`🔍 Found start ruby tag at position ${startMatch.index}`);
-      
       // 找到结束位置（第endIndex个ruby标签的结束）
       let endMatch: RegExpMatchArray | null = null;
-      let searchPos = startMatch.index;
-      
-      console.log(`🔍 Searching for end ruby tag from position ${searchPos}`);
+      const searchPos = startMatch.index;
       
       // 重置正则表达式的lastIndex
       const rubyEndPattern = new RegExp(`<ruby[^>]*data-word-index="(\\d+)"[^>]*>.*?</ruby>`, 'g');
       rubyEndPattern.lastIndex = searchPos;
       
       let rubyMatch;
-      let foundEndTag = false;
       while ((rubyMatch = rubyEndPattern.exec(resultHTML)) !== null) {
-        const index = parseInt(rubyMatch[1]!, 10);
-        console.log(`🔍 Found ruby tag with index ${index} at position ${rubyMatch.index}`);
+        const currentIndex = parseInt(rubyMatch[1]!, 10);
         
-        if (index >= startIndex && index <= endIndex) {
-          console.log(`🔍 Ruby tag index ${index} is in range ${startIndex}-${endIndex}`);
-          if (index === endIndex) {
-            endMatch = rubyMatch;
-            foundEndTag = true;
-            console.log(`🎯 Found end ruby tag for index ${endIndex}`);
-            break;
-          }
+        if (currentIndex === endIndex) {
+          endMatch = rubyMatch;
+          break;
         }
       }
       
       if (!endMatch) {
-        console.log(`❌ Could not find end ruby tag for index ${endIndex}`);
-        console.log(`🔍 foundEndTag: ${foundEndTag}`);
         continue;
       }
       
@@ -649,50 +633,32 @@ export function useWordsAnnotation(
       const endPos = endMatch.index! + endMatch[0].length;
       const matchedText = resultHTML.substring(startPos, endPos);
       
-      console.log(`🔍 HTML range found: ${startPos}-${endPos}`);
-      console.log(`🔍 Matched text: "${matchedText.substring(0, 100)}${matchedText.length > 100 ? '...' : ''}"`);
-      
       // 生成span标签
       let spanTag: string;
       
       if (item.type === 'proper_noun') {
-        // 专有名词使用 PROPN class
-        const enAnnotation = item.en || '';
-        const zhAnnotation = item.zh || '';
+        const enAnnotation = item.en || 'Unknown';
+        const zhAnnotation = item.zh || '未知';
         spanTag = `<span class="PROPN">${matchedText}<span class="annotation en">(${enAnnotation})</span><span class="annotation zh">(${zhAnnotation})</span></span>`;
       } else {
-        // 词组使用 mwe class
-        const enAnnotation = (item as MWEAnnotation).en || '';
-        const zhAnnotation = (item as MWEAnnotation).zh || '';
+        // MWE类型
+        const enAnnotation = item.en || 'Multi-word expression';
+        const zhAnnotation = item.zh || '多词表达';
         spanTag = `<span class="mwe">${matchedText}<span class="annotation en">(${enAnnotation})</span><span class="annotation zh">(${zhAnnotation})</span></span>`;
       }
       
-      console.log('🔍 Generated span tag:', spanTag.substring(0, 150) + '...');
-      
       // 替换
-      const beforeReplace = resultHTML.length;
       resultHTML = resultHTML.slice(0, startPos) + spanTag + resultHTML.slice(endPos);
-      const afterReplace = resultHTML.length;
-      
-      console.log(`✅ Replacement completed. HTML length: ${beforeReplace} -> ${afterReplace}`);
-      console.log(`🔍 New HTML preview: "${resultHTML.substring(startPos, startPos + 200)}..."`);
+      processedCount++;
     }
 
-    console.log(`\n🏁 Final result HTML length: ${resultHTML.length} (original: ${htmlText.length})`);
-    console.log(`🏁 Processing completed for ${allPhrases.length} phrases`);
+    console.log(`�️ Phrase matching completed: ${processedCount}/${allPhrases.length} phrases matched`);
     return resultHTML;
   }, [extractRubyWordsArray, matchPhraseWithIndexes]);
 
   // 带重试机制的单词注释处理（第一步：只获取单词）
-  const annotateWordsWithRetry = useCallback(async (text: string, attempts = 0): Promise<{ words: WordAnnotation[] } | null> => {
-    const requestId = `words-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+  const annotateWordsWithRetry = useCallback(async (text: string, attempts = 0): Promise<{ words: WordAnnotation[], usage?: TokenUsage } | null> => {
     try {
-      // 标记LLM请求开始
-      hasStartedLLMRequests.current = true;
-      llmRequestsInProgress.current.add(requestId);
-      
-      // 调用LLM服务获取单词
       const annotationProvider = getAnnotationProvider(provider);
       if (!annotationProvider) {
         throw new Error(`Annotation provider '${provider}' not found`);
@@ -704,518 +670,272 @@ export function useWordsAnnotation(
       // 打印 LLM 返回的 JSON 内容
       console.log('🔤 LLM Words Response JSON:', JSON.stringify(result, null, 2));
       
-      console.log('LLM words result:', result);
-      return { words: result.words || [] };
+      return { words: result.words || [], usage: result.usage };
     } catch (error) {
       console.error(`Words annotation attempt ${attempts + 1} failed:`, error);
       
       if (attempts < retryAttempts) {
-        // 指数退避重试
         const delay = retryDelay * Math.pow(2, attempts);
-        console.log(`Retrying words annotation in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         return annotateWordsWithRetry(text, attempts + 1);
       }
       
-      console.error('All words annotation attempts failed for text:', text.substring(0, 100));
-      return { words: [] }; // 返回空结果而不是null
-    } finally {
-      // 请求完成，从跟踪中移除
-      llmRequestsInProgress.current.delete(requestId);
+      return { words: [] };
     }
   }, [provider, retryAttempts, retryDelay]);
 
   // 带重试机制的词组和专有名词注释处理（第二步：获取词组和多词专有名词）
-  const annotatePhrasesAndProperNounsWithRetry = useCallback(async (text: string, attempts = 0): Promise<{ mwes: MWEAnnotation[], proper_nouns: ProperNounAnnotation[] } | null> => {
-    const requestId = `phrases-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+  const annotatePhrasesAndProperNounsWithRetry = useCallback(async (text: string, attempts = 0): Promise<{ mwes: MWEAnnotation[], proper_nouns: ProperNounAnnotation[], usage?: TokenUsage } | null> => {
     try {
-      // 标记LLM请求开始
-      hasStartedLLMRequests.current = true;
-      llmRequestsInProgress.current.add(requestId);
-      
-      // 调用LLM服务获取词组和专有名词
       const annotationProvider = getAnnotationProvider(provider);
       if (!annotationProvider) {
         throw new Error(`Annotation provider '${provider}' not found`);
       }
 
-      console.log('Calling LLM for phrases and proper nouns:', text.substring(0, 50));
+      console.log('🏷️ Calling LLM for phrases and proper nouns:', text.substring(0, 50));
       const result = await annotationProvider.annotate(`phrases:${text}`);
       
       // 打印 LLM 返回的 JSON 内容
-      console.log('📝 LLM Phrases Response JSON:', JSON.stringify(result, null, 2));
+      console.log('🏷️ LLM Phrases Response JSON:', JSON.stringify(result, null, 2));
       
-      console.log('LLM phrases result:', result);
-      return { mwes: result.mwes || [], proper_nouns: result.proper_nouns || [] };
+      return { mwes: result.mwes || [], proper_nouns: result.proper_nouns || [], usage: result.usage };
     } catch (error) {
       console.error(`Phrases annotation attempt ${attempts + 1} failed:`, error);
       
       if (attempts < retryAttempts) {
-        // 指数退避重试
         const delay = retryDelay * Math.pow(2, attempts);
-        console.log(`Retrying phrases annotation in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         return annotatePhrasesAndProperNounsWithRetry(text, attempts + 1);
       }
       
-      console.error('All phrases annotation attempts failed for text:', text.substring(0, 100));
-      return { mwes: [], proper_nouns: [] }; // 返回空结果而不是null
-    } finally {
-      // 请求完成，从跟踪中移除
-      llmRequestsInProgress.current.delete(requestId);
+      return { mwes: [], proper_nouns: [] };
     }
   }, [provider, retryAttempts, retryDelay]);
 
-  // 处理单个元素 - 新的两步流程：先单词，再词组和专有名词
-  const annotateElement = useCallback(async (element: HTMLElement): Promise<void> => {
+  // 注释单个元素（类似translation的translateElement）
+  const annotateElement = useCallback(async (el: HTMLElement) => {
     if (!enabledRef.current) return;
     
-    // 检查是否已经注释过
-    if (annotatedElements.current.has(element)) return;
-    
-    // 检查是否正在处理
-    if (processingQueue.current.has(element)) return;
-    
-    // 检查是否已有我们的注释标签，如果有则跳过（永久保存原则）
-    if (element.querySelector('ruby.word, .mwe, .PROPN')) {
-      console.log('Element already has annotations, skipping:', element.textContent?.substring(0, 50));
-      annotatedElements.current.add(element); // 标记为已处理
+    // 关键修复：正确处理换行符，将\n替换为空格而不是直接删除
+    const text = el.textContent?.replace(/\n/g, ' ').trim();
+    if (!text || text.length < 3) return;
+
+    // 跳过已注释的元素
+    if (isElementAnnotated(el)) return;
+
+    // 跳过特定类型的元素
+    if (el.classList.contains('annotation-target') || 
+        ['pre', 'code', 'math', 'ruby', 'style', 'script'].includes(el.tagName.toLowerCase())) {
       return;
     }
 
-    // 获取纯文本内容（不包含任何HTML标签）
-    const originalText = element.textContent?.trim();
-    if (!originalText || originalText.length < 3) return;
+    // 关键修复：检查是否有未完成的注释任务 - 严格等待之前的节点处理完成
+    const currentlyProcessing = document.querySelectorAll('.processing-annotation');
+    if (currentlyProcessing.length > 0) {
+      console.log(`⏳ Waiting for ${currentlyProcessing.length} nodes to finish processing before starting new annotation`);
+      
+      // 等待更长时间并递归重试，确保完全完成前不开始新的注释
+      setTimeout(() => {
+        annotateElement(el);
+      }, 2000);
+      return;
+    }
 
-    console.log('Processing element with text:', originalText.substring(0, 100));
+    // 避免重复处理
+    if (processingQueue.current.has(el)) {
+      console.log(`⚠️ Element already in processing queue, skipping`);
+      return;
+    }
+    
+    processingQueue.current.add(el);
 
-    // 添加到处理队列
-    processingQueue.current.add(element);
-    currentBatchElements.current.add(element);
+    // 添加处理中标记
+    el.classList.add('processing-annotation');
+    console.log(`🚀 Starting annotation for element: "${text.substring(0, 50)}..."`);
+    console.log(`📊 Current processing queue size: ${processingQueue.current.size}`);
 
     try {
+      // 保存原始文本节点（类似translation的updateSourceNodes逻辑）
+      const hasDirectText = Array.from(el.childNodes).some(
+        (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim() !== ''
+      );
+      
+      if (hasDirectText && !el.hasAttribute('original-text-stored')) {
+        const textNodes = Array.from(el.childNodes).filter(
+          (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim() !== ''
+        );
+        
+        el.setAttribute(
+          'original-text-nodes',
+          JSON.stringify(textNodes.map((node) => node.textContent))
+        );
+        el.setAttribute('original-text-stored', 'true');
+      }
+
       // 第一步：获取单词注释（基于纯文本，按顺序）
-      const wordsAnnotations = await annotateWordsWithRetry(originalText);
+      console.log(`🔤 Requesting word annotations for: "${text}"`);
+      const wordsAnnotations = await annotateWordsWithRetry(text);
       
       // 第二步：获取词组和多词专有名词的注释（基于同样的纯文本）
-      const phrasesAnnotations = await annotatePhrasesAndProperNounsWithRetry(originalText);
+      console.log(`🏷️ Requesting phrase annotations for: "${text}"`);
+      const phrasesAnnotations = await annotatePhrasesAndProperNounsWithRetry(text);
       
       // 第三步：先处理单词，创建ruby标签（使用新的顺序匹配算法）
-      let processedHTML = originalText;
+      let processedHTML = text;
       if (wordsAnnotations && wordsAnnotations.words.length > 0 && enabledRef.current) {
-        processedHTML = createOrderedWordRubyAnnotations(originalText, wordsAnnotations);
+        console.log(`🔤 Processing ${wordsAnnotations.words.length} word annotations`);
+        processedHTML = createOrderedWordRubyAnnotations(text, wordsAnnotations);
         console.log('After word annotations:', processedHTML.substring(0, 200));
       }
 
       // 第四步：在ruby标签基础上添加词组和专有名词span包装
       if (phrasesAnnotations && (phrasesAnnotations.mwes.length > 0 || phrasesAnnotations.proper_nouns.length > 0) && 
           enabledRef.current && (viewSettings?.phraseAnnotationEnabled || viewSettings?.wordAnnotationEnabled)) {
+        console.log(`🏷️ Processing ${phrasesAnnotations.mwes.length} MWEs and ${phrasesAnnotations.proper_nouns.length} proper nouns`);
         console.log('🔍 About to call createIndexBasedPhraseAnnotations');
-        console.log('  - MWEs:', phrasesAnnotations.mwes.length);
-        console.log('  - Proper nouns:', phrasesAnnotations.proper_nouns.length);
-        console.log('  - Phrase annotation enabled:', viewSettings?.phraseAnnotationEnabled);
-        console.log('  - Word annotation enabled:', viewSettings?.wordAnnotationEnabled);
-        console.log('  - enabledRef.current:', enabledRef.current);
-        console.log('  - processedHTML length before phrase annotation:', processedHTML.length);
-        
         processedHTML = createIndexBasedPhraseAnnotations(processedHTML, phrasesAnnotations);
         console.log('🔍 After phrase and proper noun annotations:', processedHTML.substring(0, 200));
-        console.log('  - processedHTML length after phrase annotation:', processedHTML.length);
-      } else {
-        console.log('🔍 Skipping phrase annotation because:');
-        console.log('  - phrasesAnnotations exists:', !!phrasesAnnotations);
-        console.log('  - MWEs count:', phrasesAnnotations?.mwes.length || 0);
-        console.log('  - Proper nouns count:', phrasesAnnotations?.proper_nouns.length || 0);
-        console.log('  - enabledRef.current:', enabledRef.current);
-        console.log('  - phraseAnnotationEnabled:', viewSettings?.phraseAnnotationEnabled);
-        console.log('  - wordAnnotationEnabled:', viewSettings?.wordAnnotationEnabled);
       }
 
       // 第五步：更新元素内容（只有在内容发生变化时才更新）
-      if (enabledRef.current && processedHTML !== originalText) {
-        element.innerHTML = processedHTML;
+      if (enabledRef.current && processedHTML !== text) {
+        el.innerHTML = processedHTML;
+        el.setAttribute('word-annotation-mark', '1');
+        
+        // 标记为已注释
+        if (!annotatedElements.current.includes(el)) {
+          annotatedElements.current.push(el);
+        }
+        
+        // 添加完成标记，移除处理中标记
+        el.classList.add('annotated');
+        el.classList.remove('processing-annotation');
+        
+        // 触发注释开始事件
+        window.dispatchEvent(new CustomEvent('annotation-start'));
+        console.log(`✅ Annotation completed for element: "${text.substring(0, 50)}..."`);
         console.log('Final HTML set for element:', processedHTML.substring(0, 200));
+        
+        // 新增：单个节点注释完成后立即触发状态更新
+        triggerStatusUpdate();
       } else {
         console.log('No annotations found or content unchanged, skipping HTML update');
+        // 即使没有注释，也要标记为已处理
+        el.classList.add('annotated');
+        el.classList.remove('processing-annotation');
+        
+        // 新增：即使没有注释变化，也触发状态更新以确保CSS分类正确
+        triggerStatusUpdate();
       }
-
-      // 标记为已注释（永久保存）
-      annotatedElements.current.add(element);
     } catch (error) {
       console.error('Failed to annotate element:', error);
-      // 即使失败也要标记为已处理，避免无限重试
-      annotatedElements.current.add(element);
+      // 出错时也要移除处理中标记
+      el.classList.remove('processing-annotation');
+      window.dispatchEvent(new CustomEvent('annotation-error', {
+        detail: { error }
+      }));
     } finally {
       // 从处理队列中移除
-      processingQueue.current.delete(element);
-      currentBatchElements.current.delete(element);
-    }
-  }, [annotateWordsWithRetry, createOrderedWordRubyAnnotations, annotatePhrasesAndProperNounsWithRetry, createIndexBasedPhraseAnnotations, viewSettings?.phraseAnnotationEnabled, viewSettings?.wordAnnotationEnabled]);
-
-  // 批处理注释 - 管理等待状态和页面切换检测（支持后台处理）
-  const processBatchAnnotation = useCallback(async (elements: HTMLElement[], isBackgroundProcessing = false) => {
-    if (elements.length === 0) return;
-    
-    // 生成当前视图ID
-    const viewId = generateViewId(elements);
-    
-    // 检查是否已经完全注释
-    if (checkCurrentViewAnnotationStatus(elements)) {
-      console.log(`📋 View (${viewId}) already fully annotated, skipping`);
-      if (!isBackgroundProcessing) {
-        viewAnnotationStatus.current.set(viewId, 'completed');
+      processingQueue.current.delete(el);
+      console.log(`🏁 Element processing completed. Queue size: ${processingQueue.current.size}`);
+      
+      // 检查是否所有处理都完成
+      if (processingQueue.current.size === 0) {
+        console.log(`🎉 All annotation tasks completed!`);
+        window.dispatchEvent(new CustomEvent('annotation-end'));
       }
-      return;
     }
-    
-    // 如果已经在处理中且不是后台处理，取消之前的处理
-    if (isProcessingBatchRef.current && !isBackgroundProcessing) {
-      cancelProcessing();
-    }
-    
-    // 如果是前台处理，立即显示等待状态（不管是否已经在处理）
-    const needsWaitingState = !isBackgroundProcessing;
-    
-    if (needsWaitingState) {
-      // 前台处理：开始批处理，发送等待状态
-      isProcessingBatchRef.current = true;
-      currentViewId.current = viewId;
-      
-      // 重置LLM请求状态
-      hasStartedLLMRequests.current = false;
-      llmRequestsInProgress.current.clear();
-      
-      emitAnnotationStart();
-      console.log(`🎯 Foreground processing started for view (${viewId})`);
-    } else {
-      console.log(`🔄 Background processing started for view (${viewId})`);
-    }
+  }, [enabledRef, isElementAnnotated, annotateWordsWithRetry, annotatePhrasesAndProperNounsWithRetry, createOrderedWordRubyAnnotations, createIndexBasedPhraseAnnotations, viewSettings?.phraseAnnotationEnabled, viewSettings?.wordAnnotationEnabled]);
 
-    // 更新视图状态
-    if (!isBackgroundProcessing) {
-      viewAnnotationStatus.current.set(viewId, 'processing');
-    }
-
-    // 设置页面切换检测（仅前台处理）
-    let isCancelled = false;
-    if (!isBackgroundProcessing) {
-      cancelCurrentProcessing.current = () => {
-        isCancelled = true;
-      };
-
-      // 设置500ms延迟检测
-      if (pageSwitchTimeoutRef.current) {
-        clearTimeout(pageSwitchTimeoutRef.current);
-      }
+  // 在范围内注释（类似translation的translateInRange）
+  const annotateInRange = useCallback(
+    debounce((range: Range) => {
+      const nodes = allTextNodes.current;
+      if (nodes.length === 0) return;
       
-      pageSwitchTimeoutRef.current = setTimeout(() => {
-        if (isCancelled || !isProcessingBatchRef.current) {
-          console.log('⚡ Page switch detected after 500ms');
-          console.log(`📊 LLM Status - Started: ${hasStartedLLMRequests.current}, Active requests: ${llmRequestsInProgress.current.size}`);
-          
-          if (hasStartedLLMRequests.current && llmRequestsInProgress.current.size > 0) {
-            console.log('💰 Preserving resources: LLM requests already in progress, continuing task');
-          } else {
-            console.log('🛑 No LLM requests active, safe to cancel');
-          }
-          
-          cancelProcessing();
-          return;
+      // 找到范围内的节点
+      const startContainer = range.startContainer;
+      const endContainer = range.endContainer;
+      
+      let startIndex = -1;
+      let endIndex = -1;
+      
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i]!;
+        if (node === startContainer || node.contains(startContainer)) {
+          if (startIndex === -1) startIndex = i;
         }
-      }, 500);
-    }
-
-    try {
-      const processingType = isBackgroundProcessing ? 'Background' : 'Foreground';
-      console.log(`${processingType} batch annotation for`, elements.length, 'elements');
-      
-      // 处理所有元素
-      const promises = elements.map(async element => {
-        if (isCancelled && !isBackgroundProcessing) return;
-        try {
-          return await annotateElement(element);
-        } catch (error) {
-          console.error('Error in annotateElement:', error);
-          // 确保元素被标记为已处理
-          annotatedElements.current.add(element);
-        }
-      });
-      
-      await Promise.all(promises);
-      
-      // 等待当前批次完成（仅前台处理需要严格等待）
-      if (!isBackgroundProcessing) {
-        let waitCount = 0;
-        while (currentBatchElements.current.size > 0 && !isCancelled && waitCount < 50) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          waitCount++;
-        }
-        
-        if (waitCount >= 50) {
-          console.warn('Timeout waiting for batch completion, forcing end');
-          currentBatchElements.current.clear();
+        if (node === endContainer || node.contains(endContainer)) {
+          endIndex = i;
         }
       }
       
-      console.log(`${processingType} batch annotation completed for view (${viewId})`);
+      if (startIndex === -1) return;
+      if (endIndex === -1) endIndex = startIndex;
       
-      // 更新视图状态
-      viewAnnotationStatus.current.set(viewId, 'completed');
+      const beforeStart = Math.max(0, startIndex - 2);
+      const afterEnd = Math.min(nodes.length - 1, endIndex + 2);
       
-    } catch (error) {
-      console.error('Error in batch annotation:', error);
-    } finally {
-      // 清理超时器（仅前台处理）
-      if (!isBackgroundProcessing) {
-        if (pageSwitchTimeoutRef.current) {
-          clearTimeout(pageSwitchTimeoutRef.current);
-          pageSwitchTimeoutRef.current = null;
+      for (let i = beforeStart; i <= afterEnd; i++) {
+        const node = nodes[i];
+        if (node) {
+          annotateElement(node);
         }
-        
-        // 强制结束批处理，清除等待状态
-        isProcessingBatchRef.current = false;
-        emitAnnotationEnd();
-        
-        // 清理取消函数
-        cancelCurrentProcessing.current = null;
       }
-      
-      console.log(`${isBackgroundProcessing ? 'Background' : 'Foreground'} annotation cleanup completed for view (${viewId})`);
+    }, 500),
+    [annotateElement]
+  );
+
+  // 监听TTS进度变化（类似translation的TTS监听）
+  useEffect(() => {
+    if (viewState?.ttsEnabled && progress && document.hidden) {
+      const { range } = progress;
+      annotateInRange(range);
     }
-  }, [annotateElement, emitAnnotationStart, emitAnnotationEnd, cancelProcessing, generateViewId, checkCurrentViewAnnotationStatus]);
-
-  // 预先注释接下来的元素（智能预处理机制）
-  const preAnnotateNextElements = useCallback((currentElement: HTMLElement, count: number, currentVisibleElements: HTMLElement[]) => {
-    if (!allTextNodes.current || count <= 0) return;
-    
-    const currentIndex = allTextNodes.current.indexOf(currentElement);
-    if (currentIndex === -1) return;
-
-    console.log('🚀 Starting intelligent pre-processing for next', count, 'views');
-
-    // 使用当前视口实际可见的段落数作为基准
-    const elementsPerView = currentVisibleElements.length;
-    const totalElementsToProcess = elementsPerView * count;
-    const nextElements = allTextNodes.current.slice(currentIndex + 1, currentIndex + 1 + totalElementsToProcess);
-    
-    if (nextElements.length === 0) return;
-
-    console.log(`📊 Current viewport has ${elementsPerView} elements, pre-processing ${totalElementsToProcess} elements (${count} views)`);
-
-    // 按视图分组
-    const viewGroups: HTMLElement[][] = [];
-    for (let i = 0; i < nextElements.length; i += elementsPerView) {
-      viewGroups.push(nextElements.slice(i, i + elementsPerView));
-    }
-
-    // 为每个视图生成ID并设置状态
-    viewGroups.forEach((viewElements, index) => {
-      const viewId = generateViewId(viewElements);
-      
-      // 检查该视图是否已经完全注释
-      if (checkCurrentViewAnnotationStatus(viewElements)) {
-        viewAnnotationStatus.current.set(viewId, 'completed');
-        console.log(`📋 View ${index + 1} (${viewId}) already annotated, skipping`);
-        return;
-      }
-
-      // 标记为待处理
-      viewAnnotationStatus.current.set(viewId, 'pending');
-      pendingViewElements.current.set(viewId, viewElements);
-      
-      console.log(`📋 View ${index + 1} (${viewId}) queued for pre-processing`);
-
-      // 延迟处理，避免阻塞当前操作
-      const delay = (index + 1) * 1000; // 每个视图延迟1秒处理
-      setTimeout(async () => {
-        console.log(`🔄 Pre-processing view ${index + 1} (${viewId})`);
-        viewAnnotationStatus.current.set(viewId, 'processing');
-        
-        // 后台处理
-        await processBatchAnnotation(viewElements, true); // 传入后台处理标记
-        
-        viewAnnotationStatus.current.set(viewId, 'completed');
-        console.log(`✅ Pre-processing completed for view ${index + 1} (${viewId})`);
-      }, delay);
-    });
-  }, [generateViewId, checkCurrentViewAnnotationStatus, processBatchAnnotation]);
-
-  // 创建IntersectionObserver（支持智能预处理）
-  const createAnnotationObserver = useCallback(() => {
-    return new IntersectionObserver(
-      (entries) => {
-        const visibleElements: HTMLElement[] = [];
-        let currentElement: HTMLElement | null = null;
-        
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            const element = entry.target as HTMLElement;
-            visibleElements.push(element);
-            currentElement = element;
-          }
-        }
-        
-        // 如果没有可见元素，跳过处理
-        if (visibleElements.length === 0) return;
-        
-        // 生成当前视图ID
-        const currentViewId = generateViewId(visibleElements);
-        
-        // 检查当前视图的注释状态
-        const isCurrentViewFullyAnnotated = checkCurrentViewAnnotationStatus(visibleElements);
-        
-        console.log(`👁️ View changed to (${currentViewId})`);
-        console.log(`  - View fully annotated: ${isCurrentViewFullyAnnotated}`);
-        console.log(`  - Currently processing: ${isProcessingBatchRef.current}`);
-        
-        if (!isCurrentViewFullyAnnotated) {
-          // 当前视图有未注释的元素，需要注释
-          console.log(`🎯 Current view (${currentViewId}) has unannotated elements, processing immediately`);
-          
-          // 如果已经在处理其他批次，先取消
-          if (isProcessingBatchRef.current) {
-            console.log('🔄 Cancelling previous processing for new view');
-            cancelProcessing();
-          }
-          
-          // 立即处理当前视图（前台处理，显示等待状态）
-          processBatchAnnotation(visibleElements, false);
-        } else {
-          // 当前视图所有元素都已经注释完成
-          console.log(`✅ Current view (${currentViewId}) is fully annotated`);
-          
-          // 确保没有等待状态显示
-          if (isProcessingBatchRef.current) {
-            console.log('🛑 Stopping processing state for fully annotated view');
-            isProcessingBatchRef.current = false;
-            emitAnnotationEnd();
-          }
-        }
-        
-        // 预先注释下一批元素（后台处理）
-        if (currentElement) {
-          console.log(`🚀 Triggering pre-processing for next ${preloadOffset} views`);
-          preAnnotateNextElements(currentElement, preloadOffset, visibleElements);
-        }
-      },
-      {
-        rootMargin: '500px', // 提前500px开始注释
-        threshold: 0,
-      }
-    );
-  }, [processBatchAnnotation, preAnnotateNextElements, preloadOffset, generateViewId, checkCurrentViewAnnotationStatus, emitAnnotationEnd]);
-
-  // 观察文本节点
-  const observeTextNodes = useCallback(() => {
-    if (!view || !enabledRef.current) return;
-
-    const observer = createAnnotationObserver();
-    observerRef.current = observer;
-    
-    // 获取所有文本节点（段落级别）
-    let allNodes: HTMLElement[] = [];
-    
-    if (view instanceof HTMLElement) {
-      allNodes = walkTextNodes(view);
-    } else {
-      // 处理FoliateView
-      const foliateView = view as FoliateView;
-      if (foliateView.renderer && typeof foliateView.renderer.getContents === 'function') {
-        const contents = foliateView.renderer.getContents();
-        contents.forEach((content: { doc: Document; index?: number }) => {
-          if (content.doc && content.doc.body) {
-            const nodes = walkTextNodes(content.doc.body);
-            allNodes.push(...nodes);
-          }
-        });
-      }
-    }
-    
-    // 过滤掉不需要注释的元素
-    const nodes = allNodes.filter(node => {
-      const tagName = node.tagName.toLowerCase();
-      return !['pre', 'code', 'math', 'ruby', 'style', 'script'].includes(tagName);
-    });
-    console.log('Observing text nodes for annotation:', nodes.length);
-    
-    allTextNodes.current = nodes;
-    nodes.forEach(node => observer.observe(node));
-  }, [view, createAnnotationObserver]);
-
-  // 延迟批量处理
-  const debouncedObserve = useCallback(() => {
-    debounce(observeTextNodes, 300)();
-  }, [observeTextNodes]);
+  }, [viewState?.ttsEnabled, progress, annotateInRange]);
 
   // 响应设置变化
   useEffect(() => {
-    const currentEnabled = enabled && viewSettings?.wordAnnotationEnabled;
-    
-    if (enabledRef.current !== currentEnabled) {
-      enabledRef.current = currentEnabled;
-      
-      if (currentEnabled) {
-        debouncedObserve();
-      } else {
-        // 停用时清理observer
-        observerRef.current?.disconnect();
+    if (!viewSettings) return;
+
+    const enabledChanged = enabledRef.current !== (viewSettings.wordAnnotationEnabled && enabled);
+
+    if (enabledChanged) {
+      enabledRef.current = viewSettings.wordAnnotationEnabled && enabled;
+    }
+
+    if (enabledChanged) {
+      toggleAnnotationVisibility(!!enabledRef.current);
+      if (enabledRef.current) {
+        observeTextNodes();
       }
     }
-  }, [enabled, viewSettings?.wordAnnotationEnabled, debouncedObserve]);
+  }, [bookKey, viewSettings, enabled, provider, toggleAnnotationVisibility, observeTextNodes, updateAnnotation]);
 
   // 监听view变化
   useEffect(() => {
     if (!view || !enabledRef.current) return;
 
     if ('renderer' in view) {
-      view.addEventListener('load', debouncedObserve);
+      view.addEventListener('load', observeTextNodes);
     } else {
-      debouncedObserve();
+        console.log('📌 Direct view detected, observing text nodes immediately');
+      observeTextNodes();
     }
 
     return () => {
       if ('renderer' in view) {
-        view.removeEventListener('load', debouncedObserve);
+        view.removeEventListener('load', observeTextNodes);
       }
       observerRef.current?.disconnect();
-      
-      // 清理超时器
-      if (pageSwitchTimeoutRef.current) {
-        clearTimeout(pageSwitchTimeoutRef.current);
-        pageSwitchTimeoutRef.current = null;
-      }
-      
-      // 取消当前处理
-      if (cancelCurrentProcessing.current) {
-        cancelCurrentProcessing.current();
-        cancelCurrentProcessing.current = null;
-      }
-      
-      // 在cleanup中使用当前ref值
-      const annotatedElementsRef = annotatedElements.current;
-      const processingQueueRef = processingQueue.current;
-      const preProcessingQueueRef = preProcessingQueue.current;
-      const viewAnnotationStatusRef = viewAnnotationStatus.current;
-      const pendingViewElementsRef = pendingViewElements.current;
-      const llmRequestsRef = llmRequestsInProgress.current;
-      
-      annotatedElementsRef.clear();
-      processingQueueRef.clear();
-      preProcessingQueueRef.clear();
-      viewAnnotationStatusRef.clear();
-      pendingViewElementsRef.clear();
-      llmRequestsRef.clear();
-      
-      // 重置LLM状态
-      hasStartedLLMRequests.current = false;
-      
-      console.log('🧹 Cleaned up all annotation state including LLM tracking');
+      annotatedElements.current = [];
     };
-  }, [view, debouncedObserve]);
+  }, [view, observeTextNodes]);
 
   return {
     annotateElement,
-    clearAnnotatedElements,
+    toggleAnnotationVisibility,
+    isAnnotating: processingQueue.current.size > 0,
+    registerStatusUpdateCallback, // 新增：导出状态更新回调注册函数
   };
 }

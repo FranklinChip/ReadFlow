@@ -20,7 +20,7 @@ export const qwenProvider: AnnotationProvider = {
       systemPrompt = `You are an expert English language assistant. Your task is to identify meaningful phrases and multi-word proper nouns in English text.
 
 Find and explain:
-1. **Multi-word proper nouns** (2+ words): Names of people, places, organizations, brands, etc.
+1. **Multi-word proper nouns** (it must be 2+ words): Names of people, places, organizations, brands, etc.
 2. **Meaningful phrases**: Idioms, phrasal verbs, collocations with special meanings
 
 Return your findings in JSON format:
@@ -71,10 +71,12 @@ Return results in the specified JSON format.`;
       systemPrompt = `You are an expert English language assistant. Your task is to analyze English text and provide explanations for ALL individual words in their original order.
 
 CRITICAL REQUIREMENTS:
-1. Return words in the EXACT SAME ORDER as they appear in the text
-2. Include ALL words (content words, function words, etc.) but exclude punctuation marks
-3. Treat contractions as single words (e.g., "I've", "don't", "we're")
-4. Treat hyphenated words as single words (e.g., "forty-five", "well-known")
+1. ONLY analyze the text provided by the user - DO NOT add any extra words
+2. Return words in the EXACT SAME ORDER as they appear in the text
+3. Include ALL words (content words, function words, etc.) but exclude punctuation marks
+4. Treat contractions as single words (e.g., "I've", "don't", "we're")
+5. Treat hyphenated words as single words (e.g., "forty-five", "well-known")
+6. DO NOT include instructions, examples, or any other text beyond what the user provides
 
 Return your findings in JSON format:
 {
@@ -93,18 +95,21 @@ Requirements:
 - Include ALL words except punctuation marks
 - Chinese explanations must be extremely concise (≤10 characters)
 - English explanations should use simple, easy-to-understand words(≤10 words)
-- Return valid JSON only`;
+- Return valid JSON only
+- DO NOT hallucinate or add extra words not in the original text`;
 
-      userPrompt = `Analyze the following English text and provide explanations for ALL individual words in their EXACT ORDER of appearance.
+      userPrompt = `Analyze ONLY the following English text and provide explanations for ALL individual words in their EXACT ORDER of appearance.
 
-Text to analyze:
-${actualText}
+IMPORTANT: Only analyze this exact text, do not add any other words:
+
+"${actualText}"
 
 CRITICAL RULES: 
 - Return words in EXACT ORDER of appearance in the text
 - Include ALL words except punctuation marks
 - Treat hyphenated words as single units (e.g., "forty-five", "well-known")
 - Treat contractions as single units (e.g., "I've", "don't", "we're")
+- DO NOT include any words that are not in the original text above
 
 Return results in the specified JSON format with words in exact order.`;
     }
@@ -138,6 +143,9 @@ Return results in the specified JSON format with words in exact order.`;
       }
 
       const content = data.choices[0].message.content;
+      const usage = data.usage; // 获取token使用信息
+      
+      console.log('🔍 Token usage:', usage);
     
       
       try {
@@ -155,7 +163,8 @@ Return results in the specified JSON format with words in exact order.`;
           return {
             mwes: result.mwes || [],
             proper_nouns: result.proper_nouns || [], // 多词专有名词
-            words: [] // 词组查询不返回单词
+            words: [], // 词组查询不返回单词
+            usage: usage // 添加token使用信息
           };
         } else {
           // 单词查询只需要验证 words
@@ -165,7 +174,8 @@ Return results in the specified JSON format with words in exact order.`;
           return {
             mwes: [], // 单词查询不返回词组
             proper_nouns: [], // 单词查询不返回专有名词（多词专有名词在第二次请求中处理）
-            words: result.words || []
+            words: result.words || [],
+            usage: usage // 添加token使用信息
           };
         }
       } catch (parseError) {

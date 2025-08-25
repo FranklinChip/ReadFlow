@@ -78,8 +78,10 @@ const FoliateViewer: React.FC<{
   useProgressSync(bookKey);
   useProgressAutoSave(bookKey);
   useTextTranslation(bookKey, viewRef.current);
-  useUnknownWordDisplay(bookKey, viewRef.current);
+  
+  // 集成章节注释功能
   useWordsAnnotation(bookKey, viewRef.current);
+  useUnknownWordDisplay(bookKey, viewRef.current);
 
   const progressRelocateHandler = (event: Event) => {
     const detail = (event as CustomEvent).detail;
