@@ -31,8 +31,8 @@ export function useTextTranslation(
   const translateRef = useRef(translate);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const translatedElements = useRef<HTMLElement[]>([]);
-  const allTextNodes = useRef<HTMLElement[]>([]);
-
+  const allTextNodes = useRef<HTMLElement[]>([]);//这个方法可以用于预注释
+  //让所有的文本节点显示或隐藏
   const toggleTranslationVisibility = (visible: boolean) => {
     translatedElements.current.forEach((element) => {
       const translationTargets = element.querySelectorAll('.translation-target');
@@ -45,7 +45,7 @@ export function useTextTranslation(
       });
     });
   };
-
+//保持translate方法的最新引用
   useEffect(() => {
     translateRef.current = translate;
   }, [translate]);
@@ -71,7 +71,7 @@ export function useTextTranslation(
       recreateTranslationObserver();
     }
   };
-
+//这个预处理机制非常好，我们注释一定要借鉴
   const createTranslationObserver = () => {
     return new IntersectionObserver(
       (entries) => {
@@ -123,16 +123,16 @@ export function useTextTranslation(
     observerRef.current = observer;
     allTextNodes.current.forEach((el) => observer.observe(el));
   };
-
+  //这里前面的函数，我们在注释里面都可以使用
   const translateElement = async (el: HTMLElement) => {
     if (!enabled.current) return;
-    const text = el.textContent?.replaceAll('\n', '').trim();
+    const text = el.textContent?.replaceAll('\n', '').trim();//这行也可以用于注释之前对原文的处理，确实重要
     if (!text) return;
-
+    //如果已经翻译过了，就不再翻译
     if (el.classList.contains('translation-target')) {
       return;
     }
-
+    //注释功能并不需要显示或隐藏原文
     const updateSourceNodes = (element: HTMLElement) => {
       const hasDirectText = Array.from(element.childNodes).some(
         (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim() !== '',
@@ -183,11 +183,14 @@ export function useTextTranslation(
     updateSourceNodes(el);
 
     try {
+      //这里的await是在等待最新的translate方法返回翻译结果
       const translated = await translateRef.current([text]);
       const translatedText = translated[0];
       if (!translatedText || text === translatedText) return;
 
       const wrapper = document.createElement('font');
+      //我们也可以给每个annotation目标添加annotation-node类名
+      //他这里添加了hidden，但是注释功能需要考虑一下，注释功能有个问题是如何在注释之后刷新css
       wrapper.className = `translation-target ${!enabled.current ? 'hidden' : ''}`;
       wrapper.setAttribute('translation-element-mark', '1');
       wrapper.setAttribute('lang', targetLang || getLocale());
@@ -208,6 +211,7 @@ export function useTextTranslation(
       if (el.querySelector('.translation-target')) {
         return;
       }
+      //这里只需要简单放在后面，我们要对每个单词的注释就要复杂得多
       el.appendChild(wrapper);
       translatedElements.current.push(el);
     } catch (err) {

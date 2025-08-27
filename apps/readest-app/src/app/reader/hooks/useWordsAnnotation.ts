@@ -16,7 +16,7 @@ export function useWordsAnnotation(
   bookKey: string,
   view: FoliateView | HTMLElement | null,
   options: UseWordsAnnotationOptions = {}
-) {
+) {　　　
   const {
     provider = 'qwen', 
     enabled = true,
@@ -61,7 +61,7 @@ export function useWordsAnnotation(
     });
   }, []);
 
-  // 切换注释可见性（类似translation的toggleTranslationVisibility）
+  // 切换注释可见性（这个好像没用）
   const toggleAnnotationVisibility = useCallback((visible: boolean) => {
     annotatedElements.current.forEach((element) => {
       const annotationTargets = element.querySelectorAll('ruby.word');
