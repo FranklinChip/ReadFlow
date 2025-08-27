@@ -178,7 +178,7 @@ export const DEFAULT_TRANSLATOR_CONFIG: TranslatorConfig = {
 
 export const DEFAULT_WORD_ANNOTATION_CONFIG: WordAnnotationConfig = {
   wordAnnotationEnabled: false,
-  wordAnnotationLanguage: 'zh',
+  wordAnnotationLanguage: 'zh-CN',
   wordAnnotationFontSize: 0.7,
   wordAnnotationOpacity: 0.8,
   wordAnnotationColor: '#666666',

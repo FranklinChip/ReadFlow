@@ -7,8 +7,8 @@ import { SettingsPanelPanelProp } from './SettingsDialog';
 import Select from '@/components/Select';
 import ColorInput from './ColorInput';
 import NumberInput from './NumberInput';
+import { TRANSLATED_LANGS } from '@/services/constants';
 
-export type WordAnnotationLanguage = 'zh' | 'en';
 export type WordAnnotationPosition = 'over' | 'under';
 export type WordAnnotationBaseStyle = 'none' | 'underline' | 'highlight' | 'color';
 
@@ -31,7 +31,7 @@ const WordAnnotationPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegi
   
   // 词汇标注相关状态
   const [wordAnnotationEnabled, setWordAnnotationEnabled] = useState(viewSettings.wordAnnotationEnabled ?? false);
-  const [wordAnnotationLanguage, setWordAnnotationLanguage] = useState(viewSettings.wordAnnotationLanguage ?? 'zh');
+  const [wordAnnotationLanguage, setWordAnnotationLanguage] = useState(viewSettings.wordAnnotationLanguage ?? 'zh-CN');
   const [wordAnnotationPosition, setWordAnnotationPosition] = useState(viewSettings.wordAnnotationPosition ?? 'under');
   const [wordAnnotationBaseStyle, setWordAnnotationBaseStyle] = useState(viewSettings.wordAnnotationBaseStyle ?? 'underline');
   const [wordAnnotationFontSize, setWordAnnotationFontSize] = useState(viewSettings.wordAnnotationFontSize ?? 0.8);
@@ -114,10 +114,12 @@ const WordAnnotationPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegi
   }, [phraseAnnotationBaseTextColor, saveSettingsOptimized]);
 
   // 选项数据
-  const getLanguageOptions = () => [
-    { value: 'zh', label: _('Chinese') },
-    { value: 'en', label: _('English') },
-  ];
+  const getLanguageOptions = () => {
+    const langs = TRANSLATED_LANGS as Record<string, string>;
+    const options = Object.entries(langs).map(([value, label]) => ({ value, label }));
+    options.sort((a, b) => a.label.localeCompare(b.label));
+    return options;
+  };
 
   const getPositionOptions = () => [
     { value: 'over', label: _('Above') },
@@ -132,7 +134,7 @@ const WordAnnotationPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegi
   ];
 
   const handleSelectLanguage = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setWordAnnotationLanguage(event.target.value as WordAnnotationLanguage);
+    setWordAnnotationLanguage(event.target.value);
   };
 
   const handleSelectPosition = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -176,7 +178,7 @@ const WordAnnotationPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegi
             {wordAnnotationEnabled && (
               <>
                 <div className='config-item'>
-                  <span className=''>{_('Language')}</span>
+                  <span className=''>{_('Annotation Language')}</span>
                   <Select
                     value={wordAnnotationLanguage}
                     options={getLanguageOptions()}

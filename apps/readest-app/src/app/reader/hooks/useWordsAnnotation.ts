@@ -30,6 +30,7 @@ export function useWordsAnnotation(
   const progress = getProgress(bookKey);
 
   const enabledRef = useRef(enabled && viewSettings?.wordAnnotationEnabled);
+  const currentLangRef = useRef(viewSettings?.wordAnnotationLanguage);
   
   const observerRef = useRef<IntersectionObserver | null>(null);
   const annotatedElements = useRef<HTMLElement[]>([]);
@@ -211,8 +212,9 @@ export function useWordsAnnotation(
   }, []);
 
   // 创建单个单词的ruby标签
-  const createSingleWordRuby = useCallback((word: string, annotation: WordAnnotation, index: number): string => {
-    return `<ruby class="word" lemma="${annotation.lemma}" data-word-index="${index}">${word}<rt class="zh-meaning">${annotation.zh}</rt><rt class="en-meaning">${annotation.en}</rt></ruby>`;
+  const createSingleWordRuby = useCallback((word: string, annotation: WordAnnotation, index: number, targetLang: string): string => {
+    const langClass = targetLang === 'zh-CN' ? 'zh' : targetLang === 'en' ? 'en' : targetLang;
+    return `<ruby class="annotation-node unknown word" lemma="${annotation.lemma}" data-word-index="${index}">${word}<rt class="${langClass} annotation-target">${annotation.annotation}</rt></ruby>`;
   }, []);
 
   // 标准化文本函数，处理中英文引号等字符差异
@@ -231,7 +233,7 @@ export function useWordsAnnotation(
   }, []);
 
   // 顺序匹配单词的函数 - 新版本：从前往后顺序匹配，连续3次失败后跳过
-  const createOrderedWordRubyAnnotations = useCallback((text: string, annotations: { words: WordAnnotation[] }): string => {
+  const createOrderedWordRubyAnnotations = useCallback((text: string, annotations: { words: WordAnnotation[] }, targetLang: string): string => {
     const tokens = tokenizeText(text);
     const llmWords = annotations.words;
     
@@ -274,7 +276,7 @@ export function useWordsAnnotation(
 
         // 1. 单token匹配
         if (tokenLower === wordLower) {
-          resultTokens[searchIndex] = createSingleWordRuby(token, currentWord, wordIndex);
+          resultTokens[searchIndex] = createSingleWordRuby(token, currentWord, wordIndex, targetLang);
           processedRanges.add(searchIndex);
           wordIndex++;
           totalMatched++;
@@ -323,7 +325,7 @@ export function useWordsAnnotation(
 
           if (combinedText === wordLower) {
             // 创建跨token的ruby标签 - 但要确保合理性
-            const multiTokenRuby = createSingleWordRuby(combinedDisplay, currentWord, wordIndex);
+            const multiTokenRuby = createSingleWordRuby(combinedDisplay, currentWord, wordIndex, targetLang);
             
             // 只在第一个token处创建ruby标签，其他token保持原样但标记为已处理
             resultTokens[searchIndex] = multiTokenRuby;
@@ -557,7 +559,7 @@ export function useWordsAnnotation(
   }, []);
 
   // 创建基于索引的词组和专有名词注释
-  const createIndexBasedPhraseAnnotations = useCallback((htmlText: string, annotations: { mwes: MWEAnnotation[], proper_nouns: ProperNounAnnotation[] }): string => {
+  const createIndexBasedPhraseAnnotations = useCallback((htmlText: string, annotations: { mwes: MWEAnnotation[], proper_nouns: ProperNounAnnotation[] }, targetLang: string): string => {
     // 首先提取ruby单词数组
     const rubyWords = extractRubyWordsArray(htmlText);
     
@@ -576,6 +578,8 @@ export function useWordsAnnotation(
     let resultHTML = htmlText;
     const processedRanges = new Set<string>(); // 记录已处理的索引范围
     let processedCount = 0;
+    
+    const langClass = targetLang === 'zh-CN' ? 'zh' : targetLang === 'en' ? 'en' : targetLang;
 
     for (const item of allPhrases) {
       const phrase = item.text.trim();
@@ -637,14 +641,10 @@ export function useWordsAnnotation(
       let spanTag: string;
       
       if (item.type === 'proper_noun') {
-        const enAnnotation = item.en || 'Unknown';
-        const zhAnnotation = item.zh || '未知';
-        spanTag = `<span class="PROPN">${matchedText}<span class="annotation en">(${enAnnotation})</span><span class="annotation zh">(${zhAnnotation})</span></span>`;
+        spanTag = `<span class="annotation-node PROPN">${matchedText}<span class="${langClass} annotation-target">(${item.annotation})</span></span>`;
       } else {
         // MWE类型
-        const enAnnotation = item.en || 'Multi-word expression';
-        const zhAnnotation = item.zh || '多词表达';
-        spanTag = `<span class="mwe">${matchedText}<span class="annotation en">(${enAnnotation})</span><span class="annotation zh">(${zhAnnotation})</span></span>`;
+        spanTag = `<span class="annotation-node mwe">${matchedText}<span class="${langClass} annotation-target">(${item.annotation})</span></span>`;
       }
       
       // 替换
@@ -657,7 +657,7 @@ export function useWordsAnnotation(
   }, [extractRubyWordsArray, matchPhraseWithIndexes]);
 
   // 带重试机制的单词注释处理（第一步：只获取单词）
-  const annotateWordsWithRetry = useCallback(async (text: string, attempts = 0): Promise<{ words: WordAnnotation[], usage?: TokenUsage } | null> => {
+  const annotateWordsWithRetry = useCallback(async (text: string, targetLang: string, attempts = 0): Promise<{ words: WordAnnotation[], usage?: TokenUsage } | null> => {
     try {
       const annotationProvider = getAnnotationProvider(provider);
       if (!annotationProvider) {
@@ -665,7 +665,7 @@ export function useWordsAnnotation(
       }
 
       console.log('❤️ Calling LLM for words:', text.substring(0, 50));
-      const result = await annotationProvider.annotate(`words:${text}`);
+      const result = await annotationProvider.annotate(`words:${text}`, targetLang);
       
       // 打印 LLM 返回的 JSON 内容
       console.log('🔤 LLM Words Response JSON:', JSON.stringify(result, null, 2));
@@ -677,7 +677,7 @@ export function useWordsAnnotation(
       if (attempts < retryAttempts) {
         const delay = retryDelay * Math.pow(2, attempts);
         await new Promise(resolve => setTimeout(resolve, delay));
-        return annotateWordsWithRetry(text, attempts + 1);
+        return annotateWordsWithRetry(text, targetLang, attempts + 1);
       }
       
       return { words: [] };
@@ -685,7 +685,7 @@ export function useWordsAnnotation(
   }, [provider, retryAttempts, retryDelay]);
 
   // 带重试机制的词组和专有名词注释处理（第二步：获取词组和多词专有名词）
-  const annotatePhrasesAndProperNounsWithRetry = useCallback(async (text: string, attempts = 0): Promise<{ mwes: MWEAnnotation[], proper_nouns: ProperNounAnnotation[], usage?: TokenUsage } | null> => {
+  const annotatePhrasesAndProperNounsWithRetry = useCallback(async (text: string, targetLang: string, attempts = 0): Promise<{ mwes: MWEAnnotation[], proper_nouns: ProperNounAnnotation[], usage?: TokenUsage } | null> => {
     try {
       const annotationProvider = getAnnotationProvider(provider);
       if (!annotationProvider) {
@@ -693,7 +693,7 @@ export function useWordsAnnotation(
       }
 
       console.log('🏷️ Calling LLM for phrases and proper nouns:', text.substring(0, 50));
-      const result = await annotationProvider.annotate(`phrases:${text}`);
+      const result = await annotationProvider.annotate(`phrases:${text}`, targetLang);
       
       // 打印 LLM 返回的 JSON 内容
       console.log('🏷️ LLM Phrases Response JSON:', JSON.stringify(result, null, 2));
@@ -705,7 +705,7 @@ export function useWordsAnnotation(
       if (attempts < retryAttempts) {
         const delay = retryDelay * Math.pow(2, attempts);
         await new Promise(resolve => setTimeout(resolve, delay));
-        return annotatePhrasesAndProperNounsWithRetry(text, attempts + 1);
+        return annotatePhrasesAndProperNounsWithRetry(text, targetLang, attempts + 1);
       }
       
       return { mwes: [], proper_nouns: [] };
@@ -772,19 +772,22 @@ export function useWordsAnnotation(
         el.setAttribute('original-text-stored', 'true');
       }
 
+      // 获取目标语言
+      const targetLang = viewSettings?.wordAnnotationLanguage || 'zh-CN';
+
       // 第一步：获取单词注释（基于纯文本，按顺序）
       console.log(`🔤 Requesting word annotations for: "${text}"`);
-      const wordsAnnotations = await annotateWordsWithRetry(text);
+      const wordsAnnotations = await annotateWordsWithRetry(text, targetLang);
       
       // 第二步：获取词组和多词专有名词的注释（基于同样的纯文本）
       console.log(`🏷️ Requesting phrase annotations for: "${text}"`);
-      const phrasesAnnotations = await annotatePhrasesAndProperNounsWithRetry(text);
+      const phrasesAnnotations = await annotatePhrasesAndProperNounsWithRetry(text, targetLang);
       
       // 第三步：先处理单词，创建ruby标签（使用新的顺序匹配算法）
       let processedHTML = text;
       if (wordsAnnotations && wordsAnnotations.words.length > 0 && enabledRef.current) {
         console.log(`🔤 Processing ${wordsAnnotations.words.length} word annotations`);
-        processedHTML = createOrderedWordRubyAnnotations(text, wordsAnnotations);
+        processedHTML = createOrderedWordRubyAnnotations(text, wordsAnnotations, targetLang);
         console.log('After word annotations:', processedHTML.substring(0, 200));
       }
 
@@ -793,7 +796,7 @@ export function useWordsAnnotation(
           enabledRef.current && (viewSettings?.phraseAnnotationEnabled || viewSettings?.wordAnnotationEnabled)) {
         console.log(`🏷️ Processing ${phrasesAnnotations.mwes.length} MWEs and ${phrasesAnnotations.proper_nouns.length} proper nouns`);
         console.log('🔍 About to call createIndexBasedPhraseAnnotations');
-        processedHTML = createIndexBasedPhraseAnnotations(processedHTML, phrasesAnnotations);
+        processedHTML = createIndexBasedPhraseAnnotations(processedHTML, phrasesAnnotations, targetLang);
         console.log('🔍 After phrase and proper noun annotations:', processedHTML.substring(0, 200));
       }
 
@@ -899,9 +902,15 @@ export function useWordsAnnotation(
     if (!viewSettings) return;
 
     const enabledChanged = enabledRef.current !== (viewSettings.wordAnnotationEnabled && enabled);
+    // 添加语言变化检测
+    const languageChanged = currentLangRef.current !== viewSettings.wordAnnotationLanguage;
 
     if (enabledChanged) {
       enabledRef.current = viewSettings.wordAnnotationEnabled && enabled;
+    }
+    
+    if (languageChanged) {
+      currentLangRef.current = viewSettings.wordAnnotationLanguage;
     }
 
     if (enabledChanged) {
@@ -909,6 +918,9 @@ export function useWordsAnnotation(
       if (enabledRef.current) {
         observeTextNodes();
       }
+    } else if (languageChanged && enabledRef.current) {
+      // 语言变化时重新注释
+      updateAnnotation();
     }
   }, [bookKey, viewSettings, enabled, provider, toggleAnnotationVisibility, observeTextNodes, updateAnnotation]);
 

@@ -165,7 +165,7 @@ export interface TranslatorConfig {
 
 export interface WordAnnotationConfig {
   wordAnnotationEnabled: boolean;
-  wordAnnotationLanguage: 'zh' | 'en' | 'both';
+  wordAnnotationLanguage: string; // 改为支持任意语言代码
   wordAnnotationFontSize: number;
   wordAnnotationOpacity: number;
   wordAnnotationColor: string;

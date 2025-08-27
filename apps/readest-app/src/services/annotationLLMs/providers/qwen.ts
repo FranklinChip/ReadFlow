@@ -4,13 +4,38 @@ export const qwenProvider: AnnotationProvider = {
   name: 'qwen',
   label: 'Qwen Flash',
   
-  annotate: async (text: string): Promise<AnnotationResponse> => {
+  annotate: async (text: string, targetLanguage?: string): Promise<AnnotationResponse> => {
     const apiKey = 'sk-f9c25a7cd97d4fa0b1f096d381ad63fb';
     const apiUrl = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
     
     // 根据缓存键前缀判断是查询单词还是词组/专有名词
     const isPhrasesQuery = text.startsWith('phrases:');
     const actualText = text.replace(/^(words:|phrases:)/, '');
+    
+    // 确定目标语言，默认为中文
+    const targetLang = targetLanguage || 'zh-CN';
+    
+    // 根据目标语言确定解释语言
+    const getLanguageName = (langCode: string) => {
+      const langMap: Record<string, string> = {
+        'zh-CN': 'Chinese (Simplified)',
+        'zh-TW': 'Chinese (Traditional)',
+        'en': 'English',
+        'ja': 'Japanese',
+        'ko': 'Korean',
+        'fr': 'French',
+        'de': 'German',
+        'es': 'Spanish',
+        'pt': 'Portuguese',
+        'ru': 'Russian',
+        'ar': 'Arabic',
+        'it': 'Italian',
+        'nl': 'Dutch'
+      };
+      return langMap[langCode] || 'Chinese (Simplified)';
+    };
+    
+    const targetLanguageName = getLanguageName(targetLang);
     
     let systemPrompt = '';
     let userPrompt = '';
@@ -28,16 +53,14 @@ Return your findings in JSON format:
   "proper_nouns": [
     {
       "phrase": "exact multi-word proper noun from text",
-      "zh": "具体中文翻译(不超过10汉字)",
-      "en": "simple English explanation using easy words(≤10 words)"
+      "annotation": "explanation in ${targetLanguageName} (≤10 words/characters)"
     }
   ],
   "mwes": [
     {
       "phrase": "exact phrase from text",
       "lemma": "base form of the phrase", 
-      "zh": "简洁中文解释(不超过10汉字)",
-      "en": "simple English explanation using easy words(≤10 words)"
+      "annotation": "explanation in ${targetLanguageName} (≤10 words/characters)"
     }
   ]
 }
@@ -46,8 +69,7 @@ Requirements:
 - Multi-word proper nouns: Only include names with 2+ words (e.g., "New York", "John Smith", "Apple Inc.")
 - Meaningful phrases: Only include expressions with idiomatic meanings
 - Exclude single words and simple word combinations without special meanings
-- Chinese explanations must be extremely concise (≤10 characters)
-- English explanations should use simple, easy-to-understand words
+- Annotations must be in ${targetLanguageName} and extremely concise (≤10 words/characters)
 - Return valid JSON only`;
 
       userPrompt = `Find multi-word proper nouns (2+ words) and meaningful phrases in this text.
@@ -64,7 +86,7 @@ Exclude:
 - Simple word combinations without special meanings
 - Regular noun phrases
 
-Return results in the specified JSON format.`;
+Return results in the specified JSON format with annotations in ${targetLanguageName}.`;
       
     } else {
       // 单词查询的prompt - 按顺序返回所有单词
@@ -78,14 +100,16 @@ CRITICAL REQUIREMENTS:
 5. Treat hyphenated words as single words (e.g., "forty-five", "well-known")
 6. DO NOT include instructions, examples, or any other text beyond what the user provides
 
+Valid POS tags: NOUN, VERB, ADJ, ADV, PRON, DET, ADP, NUM, CONJ, PRT, PUNCT, X, PROPN, AUX, CCONJ, SCONJ, INTJ, SYM
+
 Return your findings in JSON format:
 {
   "words": [
     {
       "word": "exact word from text (preserve original case)",
       "lemma": "base form of the word",
-      "zh": "简洁中文解释(不超过10汉字)",
-      "en": "simple English explanation using easy words"
+      "pos": "part-of-speech tag from the valid list above",
+      "annotation": "explanation in ${targetLanguageName} (≤10 words/characters)"
     }
   ]
 }
@@ -93,8 +117,8 @@ Return your findings in JSON format:
 Requirements:
 - Words must be in EXACT ORDER of appearance
 - Include ALL words except punctuation marks
-- Chinese explanations must be extremely concise (≤10 characters)
-- English explanations should use simple, easy-to-understand words(≤10 words)
+- POS tags must be from the valid list: NOUN, VERB, ADJ, ADV, PRON, DET, ADP, NUM, CONJ, PRT, PUNCT, X, PROPN, AUX, CCONJ, SCONJ, INTJ, SYM
+- Annotations must be in ${targetLanguageName} and extremely concise (≤10 words/characters)
 - Return valid JSON only
 - DO NOT hallucinate or add extra words not in the original text`;
 
@@ -109,9 +133,10 @@ CRITICAL RULES:
 - Include ALL words except punctuation marks
 - Treat hyphenated words as single units (e.g., "forty-five", "well-known")
 - Treat contractions as single units (e.g., "I've", "don't", "we're")
+- Use valid POS tags: NOUN, VERB, ADJ, ADV, PRON, DET, ADP, NUM, CONJ, PRT, PUNCT, X, PROPN, AUX, CCONJ, SCONJ, INTJ, SYM
 - DO NOT include any words that are not in the original text above
 
-Return results in the specified JSON format with words in exact order.`;
+Return results in the specified JSON format with annotations in ${targetLanguageName} and words in exact order.`;
     }
 
     try {
