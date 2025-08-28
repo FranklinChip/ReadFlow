@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { FoliateView } from '@/types/view';
 import { useReaderStore } from '@/store/readerStore';
+import { useVocabularyStore } from '@/store/vocabularyStore';
 import { getAnnotationProvider, WordAnnotation, ProperNounAnnotation, MWEAnnotation, TokenUsage } from '@/services/annotationLLMs';
 import { walkTextNodes } from '@/utils/walk';
 import { debounce } from '@/utils/debounce';
+import { getLocale } from '@/utils/misc';
 
 interface UseWordsAnnotationOptions {
   provider?: string;
@@ -25,42 +27,19 @@ export function useWordsAnnotation(
   } = options;
 
   const { getViewSettings, getViewState, getProgress } = useReaderStore();
+  const { hasWord } = useVocabularyStore();
   const viewSettings = getViewSettings(bookKey);
   const viewState = getViewState(bookKey);
   const progress = getProgress(bookKey);
 
   const enabledRef = useRef(enabled && viewSettings?.wordAnnotationEnabled);
   const currentLangRef = useRef(viewSettings?.wordAnnotationLanguage);
+  const currentProviderRef = useRef(provider);
   
   const observerRef = useRef<IntersectionObserver | null>(null);
   const annotatedElements = useRef<HTMLElement[]>([]);
   const allTextNodes = useRef<HTMLElement[]>([]);
   const processingQueue = useRef<Set<HTMLElement>>(new Set());
-  
-  // 新增：状态更新回调管理
-  const statusUpdateCallbacksRef = useRef<Set<() => void>>(new Set());
-
-  // 新增：注册状态更新回调函数
-  const registerStatusUpdateCallback = useCallback((callback: () => void) => {
-    statusUpdateCallbacksRef.current.add(callback);
-    
-    // 返回取消注册的函数
-    return () => {
-      statusUpdateCallbacksRef.current.delete(callback);
-    };
-  }, []);
-
-  // 新增：触发状态更新回调
-  const triggerStatusUpdate = useCallback(() => {
-    console.log('📌 Triggering annotation status update callbacks');
-    statusUpdateCallbacksRef.current.forEach(callback => {
-      try {
-        callback();
-      } catch (error) {
-        console.error('Error in status update callback:', error);
-      }
-    });
-  }, []);
 
   // 切换注释可见性（这个好像没用）
   const toggleAnnotationVisibility = useCallback((visible: boolean) => {
@@ -91,27 +70,23 @@ export function useWordsAnnotation(
   // 更新注释（类似translation的updateTranslation）
   const updateAnnotation = useCallback(() => {
     annotatedElements.current.forEach((element) => {
-      // 移除已有的ruby标签
-      const rubyElements = element.querySelectorAll('ruby.word');
-      rubyElements.forEach((ruby) => {
-        const textContent = ruby.textContent || '';
-        ruby.replaceWith(document.createTextNode(textContent));
-      });
-      
-      // 恢复原始文本
+      // 完全恢复到原始状态 - 类似useTextTranslation的清理方式
       if (element.hasAttribute('original-text-stored')) {
         const originalTexts = JSON.parse(element.getAttribute('original-text-nodes') || '[]');
-        const textNodes = Array.from(element.childNodes).filter(
-          (node) => node.nodeType === Node.TEXT_NODE
-        ) as Text[];
         
-        textNodes.forEach((textNode, index) => {
-          if (originalTexts[index] !== undefined) {
-            textNode.textContent = originalTexts[index];
-          }
+        // 清除所有子元素，恢复原始文本节点
+        element.innerHTML = '';
+        originalTexts.forEach((text: string) => {
+          element.appendChild(document.createTextNode(text));
         });
+        
         element.removeAttribute('original-text-stored');
         element.removeAttribute('original-text-nodes');
+      } else {
+        // 如果没有存储原始文本，尝试提取纯文本内容
+        const textContent = element.textContent || '';
+        element.innerHTML = '';
+        element.appendChild(document.createTextNode(textContent));
       }
       
       // 清理注释相关的类名和属性
@@ -120,10 +95,7 @@ export function useWordsAnnotation(
     });
 
     annotatedElements.current = [];
-    if (viewSettings?.wordAnnotationEnabled && view) {
-      recreateAnnotationObserver();
-    }
-  }, [viewSettings?.wordAnnotationEnabled, view]);
+  }, []);
 
   // 创建注释观察器（类似translation的createTranslationObserver）
   const createAnnotationObserver = useCallback(() => {
@@ -214,8 +186,14 @@ export function useWordsAnnotation(
   // 创建单个单词的ruby标签
   const createSingleWordRuby = useCallback((word: string, annotation: WordAnnotation, index: number, targetLang: string): string => {
     const langClass = targetLang === 'zh-CN' ? 'zh' : targetLang === 'en' ? 'en' : targetLang;
-    return `<ruby class="annotation-node unknown word" lemma="${annotation.lemma}" data-word-index="${index}">${word}<rt class="${langClass} annotation-target">${annotation.annotation}</rt></ruby>`;
-  }, []);
+    const posAttr = annotation.pos ? ` pos="${annotation.pos}"` : '';
+    
+    // 基于词汇表判断已知/未知状态
+    const isKnown = hasWord(annotation.lemma);
+    const knownClass = isKnown ? 'known' : 'unknown';
+    
+    return `<ruby class="annotation-node word ${knownClass}" lemma="${annotation.lemma}"${posAttr} data-word-index="${index}">${word}<rt class="${langClass} annotation-target">${annotation.annotation}</rt></ruby>`;
+  }, [hasWord]);
 
   // 标准化文本函数，处理中英文引号等字符差异
   const normalizeText = useCallback((text: string): string => {
@@ -637,14 +615,19 @@ export function useWordsAnnotation(
       const endPos = endMatch.index! + endMatch[0].length;
       const matchedText = resultHTML.substring(startPos, endPos);
       
+      // 基于词汇表判断词组/专有名词的已知/未知状态
+      // 使用原始词组文本进行判断
+      const isKnown = hasWord(phrase.toLowerCase());
+      const knownClass = isKnown ? 'known' : 'unknown';
+      
       // 生成span标签
       let spanTag: string;
       
       if (item.type === 'proper_noun') {
-        spanTag = `<span class="annotation-node PROPN">${matchedText}<span class="${langClass} annotation-target">(${item.annotation})</span></span>`;
+        spanTag = `<span class="annotation-node PROPN ${knownClass}">${matchedText}<span class="${langClass} annotation-target">(${item.annotation})</span></span>`;
       } else {
         // MWE类型
-        spanTag = `<span class="annotation-node mwe">${matchedText}<span class="${langClass} annotation-target">(${item.annotation})</span></span>`;
+        spanTag = `<span class="annotation-node mwe ${knownClass}">${matchedText}<span class="${langClass} annotation-target">(${item.annotation})</span></span>`;
       }
       
       // 替换
@@ -652,9 +635,9 @@ export function useWordsAnnotation(
       processedCount++;
     }
 
-    console.log(`�️ Phrase matching completed: ${processedCount}/${allPhrases.length} phrases matched`);
+    console.log(`🎯 Phrase matching completed: ${processedCount}/${allPhrases.length} phrases matched`);
     return resultHTML;
-  }, [extractRubyWordsArray, matchPhraseWithIndexes]);
+  }, [extractRubyWordsArray, matchPhraseWithIndexes, hasWord]);
 
   // 带重试机制的单词注释处理（第一步：只获取单词）
   const annotateWordsWithRetry = useCallback(async (text: string, targetLang: string, attempts = 0): Promise<{ words: WordAnnotation[], usage?: TokenUsage } | null> => {
@@ -773,7 +756,7 @@ export function useWordsAnnotation(
       }
 
       // 获取目标语言
-      const targetLang = viewSettings?.wordAnnotationLanguage || 'zh-CN';
+      const targetLang = viewSettings?.wordAnnotationLanguage || getLocale();
 
       // 第一步：获取单词注释（基于纯文本，按顺序）
       console.log(`🔤 Requesting word annotations for: "${text}"`);
@@ -818,17 +801,11 @@ export function useWordsAnnotation(
         window.dispatchEvent(new CustomEvent('annotation-start'));
         console.log(`✅ Annotation completed for element: "${text.substring(0, 50)}..."`);
         console.log('Final HTML set for element:', processedHTML.substring(0, 200));
-        
-        // 新增：单个节点注释完成后立即触发状态更新
-        triggerStatusUpdate();
       } else {
         console.log('No annotations found or content unchanged, skipping HTML update');
         // 即使没有注释，也要标记为已处理
         el.classList.add('annotated');
         el.classList.remove('processing-annotation');
-        
-        // 新增：即使没有注释变化，也触发状态更新以确保CSS分类正确
-        triggerStatusUpdate();
       }
     } catch (error) {
       console.error('Failed to annotate element:', error);
@@ -902,11 +879,16 @@ export function useWordsAnnotation(
     if (!viewSettings) return;
 
     const enabledChanged = enabledRef.current !== (viewSettings.wordAnnotationEnabled && enabled);
+    const providerChanged = currentProviderRef.current !== provider;
     // 添加语言变化检测
     const languageChanged = currentLangRef.current !== viewSettings.wordAnnotationLanguage;
 
     if (enabledChanged) {
       enabledRef.current = viewSettings.wordAnnotationEnabled && enabled;
+    }
+    
+    if (providerChanged) {
+      currentProviderRef.current = provider;
     }
     
     if (languageChanged) {
@@ -918,11 +900,16 @@ export function useWordsAnnotation(
       if (enabledRef.current) {
         observeTextNodes();
       }
-    } else if (languageChanged && enabledRef.current) {
-      // 语言变化时重新注释
+    } else if ((providerChanged || languageChanged) && enabledRef.current) {
+      // 当provider或语言变化时重新注释（类似useTextTranslation的处理）
+      console.log('🔄 Annotation settings changed (provider or language), updating annotations...');
       updateAnnotation();
+      // 重新创建观察器
+      if (viewSettings?.wordAnnotationEnabled && view) {
+        recreateAnnotationObserver();
+      }
     }
-  }, [bookKey, viewSettings, enabled, provider, toggleAnnotationVisibility, observeTextNodes, updateAnnotation]);
+  }, [bookKey, viewSettings, enabled, provider, toggleAnnotationVisibility, observeTextNodes, updateAnnotation, recreateAnnotationObserver]);
 
   // 监听view变化
   useEffect(() => {
@@ -948,6 +935,5 @@ export function useWordsAnnotation(
     annotateElement,
     toggleAnnotationVisibility,
     isAnnotating: processingQueue.current.size > 0,
-    registerStatusUpdateCallback, // 新增：导出状态更新回调注册函数
   };
 }

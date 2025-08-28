@@ -95,7 +95,7 @@ Return results in the specified JSON format with annotations in ${targetLanguage
 CRITICAL REQUIREMENTS:
 1. ONLY analyze the text provided by the user - DO NOT add any extra words
 2. Return words in the EXACT SAME ORDER as they appear in the text
-3. Include ALL words (content words, function words, etc.) but exclude punctuation marks
+3. Include ALL words but exclude punctuation marks
 4. Treat contractions as single words (e.g., "I've", "don't", "we're")
 5. Treat hyphenated words as single words (e.g., "forty-five", "well-known")
 6. DO NOT include instructions, examples, or any other text beyond what the user provides
@@ -109,7 +109,7 @@ Return your findings in JSON format:
       "word": "exact word from text (preserve original case)",
       "lemma": "base form of the word",
       "pos": "part-of-speech tag from the valid list above",
-      "annotation": "explanation in ${targetLanguageName} (≤10 words/characters)"
+      "annotation": "only explanation in ${targetLanguageName} (≤10 words/characters),no other things here"
     }
   ]
 }

@@ -190,6 +190,7 @@ export const DEFAULT_WORD_ANNOTATION_CONFIG: WordAnnotationConfig = {
   phraseAnnotationBaseStyle: 'underline',
   phraseAnnotationBaseHighlightColor: '#E6F3FF',
   phraseAnnotationBaseTextColor: '#0066CC',
+  phraseWordAnnotationEnabled: true,
 };
 
 export const DEFAULT_SCREEN_CONFIG: ScreenConfig = {

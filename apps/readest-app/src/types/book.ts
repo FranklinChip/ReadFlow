@@ -178,6 +178,8 @@ export interface WordAnnotationConfig {
   phraseAnnotationBaseStyle: 'none' | 'underline' | 'highlight' | 'color';
   phraseAnnotationBaseHighlightColor: string;
   phraseAnnotationBaseTextColor: string;
+  // 新增：词组内单词注释显示控制
+  phraseWordAnnotationEnabled: boolean;
 }
 
 export interface ScreenConfig {

@@ -45,6 +45,7 @@ const WordAnnotationPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegi
   const [phraseAnnotationBaseStyle, setPhraseAnnotationBaseStyle] = useState(viewSettings.phraseAnnotationBaseStyle ?? 'none');
   const [phraseAnnotationBaseHighlightColor, setPhraseAnnotationBaseHighlightColor] = useState(viewSettings.phraseAnnotationBaseHighlightColor ?? '#e3f2fd');
   const [phraseAnnotationBaseTextColor, setPhraseAnnotationBaseTextColor] = useState(viewSettings.phraseAnnotationBaseTextColor ?? '#000000');
+  const [phraseWordAnnotationEnabled, setPhraseWordAnnotationEnabled] = useState(viewSettings.phraseWordAnnotationEnabled ?? true);
 
   const handleReset = () => {
     // 简化重置逻辑，不使用复杂的类型
@@ -112,6 +113,10 @@ const WordAnnotationPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegi
   useEffect(() => {
     saveSettingsOptimized('phraseAnnotationBaseTextColor', phraseAnnotationBaseTextColor);
   }, [phraseAnnotationBaseTextColor, saveSettingsOptimized]);
+
+  useEffect(() => {
+    saveSettingsOptimized('phraseWordAnnotationEnabled', phraseWordAnnotationEnabled);
+  }, [phraseWordAnnotationEnabled, saveSettingsOptimized]);
 
   // 选项数据
   const getLanguageOptions = () => {
@@ -268,6 +273,15 @@ const WordAnnotationPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegi
           <h2 className='mb-2 font-medium'>{_('Phrase Settings')}</h2>
           <div className='card border-base-200 bg-base-100 border shadow'>
             <div className='divide-base-200 divide-y'>
+              <div className='config-item'>
+                <span className=''>{_('Show Word Annotations in Phrases')}</span>
+                <input
+                  type='checkbox'
+                  className='toggle'
+                  checked={phraseWordAnnotationEnabled}
+                  onChange={() => setPhraseWordAnnotationEnabled(!phraseWordAnnotationEnabled)}
+                />
+              </div>
               <div className='config-item'>
                 <span className=''>{_('Phrase Base Style')}</span>
                 <Select
