@@ -1,14 +1,14 @@
 <div align="center">
-  <a href="https://readest.com?utm_source=github&utm_medium=referral&utm_campaign=readme" target="_blank">
-    <img src="https://github.com/readest/readest/blob/main/apps/readest-app/src-tauri/icons/icon.png?raw=true" alt="Readest Logo" width="20%" />
+  <a href="https://github.com/FranklinChip/ReadFlow-backup" target="_blank">
+    <img src="https://github.com/FranklinChip/ReadFlow-backup/blob/main/apps/readest-app/src-tauri/icons/icon.png?raw=true" alt="ReadFlow Logo" width="20%" />
   </a>
-  <h1>Readest</h1>
+  <h1>ReadFlow</h1>
   <br>
 
-[Readest][link-website] is an open-source ebook reader designed for immersive and deep reading experiences. Built as a modern rewrite of [Foliate](https://github.com/johnfactotum/foliate), it leverages [Next.js 15](https://github.com/vercel/next.js) and [Tauri v2](https://github.com/tauri-apps/tauri) to deliver a smooth, cross-platform experience across macOS, Windows, Linux, Android, iOS, and the Web.
+[ReadFlow][link-website] helps readers enter flow state by intelligently explaining unknown words and phrases in English books clearly and accurately. Built as a modern rewrite of [Foliate](https://github.com/johnfactotum/foliate), it leverages [Next.js 15](https://github.com/vercel/next.js) and [Tauri v2](https://github.com/tauri-apps/tauri) to deliver a smooth, cross-platform experience across macOS, Windows, Linux, Android, iOS, and the Web.
 
 [![Website][badge-website]][link-website]
-[![Web App][badge-web-app]][link-web-readest]
+[![Web App][badge-web-app]][link-web-readflow]
 [![OS][badge-platforms]][link-website]
 <br>
 [![][badge-hellogithub]][link-hellogithub]
@@ -34,8 +34,8 @@
 </p>
 
 <div align="center">
-  <a href="https://readest.com" target="_blank">
-    <img src="./data/screenshots/landing_all_platforms.png" alt="Readest Banner" width="100%" />
+  <a href="https://github.com/FranklinChip/ReadFlow-backup" target="_blank">
+    <img src="./data/screenshots/landing_all_platforms.png" alt="ReadFlow Banner" width="100%" />
   </a>
 </div>
 
@@ -53,7 +53,7 @@
 | **Dictionary/Wikipedia Lookup**         | Instantly look up words and terms when reading.                                                | ✅         |
 | **[Parallel Read][link-parallel-read]** | Read two books or documents simultaneously in a split-screen view.                             | ✅         |
 | **Customize Font and Layout**           | Adjust font, layout, theme mode, and theme colors for a personalized experience.               | ✅         |
-| **File Association and Open With**      | Quickly open files in Readest in your file browser with one-click.                             | ✅         |
+| **File Association and Open With**      | Quickly open files in ReadFlow in your file browser with one-click.                             | ✅         |
 | **Sync across Platforms**               | Synchronize book files, reading progress, notes, and bookmarks across all supported platforms. | ✅         |
 | **Translate with DeepL**                | From a single sentence to the entire book—translate instantly with DeepL.                      | ✅         |
 | **Text-to-Speech (TTS) Support**        | Enjoy smooth, multilingual narration—even within a single book.                                | ✅         |
@@ -127,13 +127,13 @@ rustup update
 
 ## Getting Started
 
-To get started with Readest, follow these steps to clone and build the project.
+To get started with ReadFlow, follow these steps to clone and build the project.
 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/readest/readest.git
-cd readest
+git clone https://github.com/FranklinChip/ReadFlow-backup.git
+cd ReadFlow-backup/readest
 git submodule update --init --recursive
 ```
 
@@ -247,7 +247,7 @@ Please check the [wiki][link-gh-wiki] of this project for more information on de
 
 ## Contributors
 
-Readest is open-source, and contributions are welcome! Feel free to open issues, suggest features, or submit pull requests. Please **review our [contributing guidelines](CONTRIBUTING.md) before you start**. We also welcome you to join our [Discord][link-discord] community for either support or contributing guidance.
+ReadFlow is open-source, and contributions are welcome! Feel free to open issues, suggest features, or submit pull requests. Please **review our [contributing guidelines](CONTRIBUTING.md) before you start**. We also welcome you to join our [Discord][link-discord] community for either support or contributing guidance.
 
 <a href="https://github.com/readest/readest/graphs/contributors">
   <p align="left">
@@ -257,7 +257,7 @@ Readest is open-source, and contributions are welcome! Feel free to open issues,
 
 ## Support
 
-If Readest has been useful to you, consider supporting its development. Your contribution helps us squash bugs faster, improve performance, and keep building great features.
+If ReadFlow has been useful to you, consider supporting its development. Your contribution helps us squash bugs faster, improve performance, and keep building great features.
 
 ### How to Donate
 
@@ -271,7 +271,7 @@ If Readest has been useful to you, consider supporting its development. Your con
 
 ## License
 
-Readest is free software: you can redistribute it and/or modify it under the terms of the [GNU Affero General Public License](https://www.gnu.org/licenses/agpl-3.0.html) as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. See the [LICENSE](LICENSE) file for details.
+ReadFlow is free software: you can redistribute it and/or modify it under the terms of the [GNU Affero General Public License](https://www.gnu.org/licenses/agpl-3.0.html) as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. See the [LICENSE](LICENSE) file for details.
 
 The following libraries and frameworks are used in this software:
 
@@ -292,27 +292,27 @@ The following fonts are utilized in this software, either bundled within the app
 
 ---
 
-<div align="center" style="color: gray;">Happy reading with Readest!</div>
+<div align="center" style="color: gray;">Happy reading with ReadFlow!</div>
 
-[badge-website]: https://img.shields.io/badge/website-readest.com-orange
-[badge-web-app]: https://img.shields.io/badge/read%20online-web.readest.com-orange
-[badge-license]: https://img.shields.io/github/license/readest/readest?color=teal
-[badge-release]: https://img.shields.io/github/release/readest/readest?color=green
+[badge-website]: https://img.shields.io/badge/website-github.com%2FFranklinChip%2FReadFlow--backup-orange
+[badge-web-app]: https://img.shields.io/badge/read%20online-web.readflow.app-orange
+[badge-license]: https://img.shields.io/github/license/FranklinChip/ReadFlow-backup?color=teal
+[badge-release]: https://img.shields.io/github/release/FranklinChip/ReadFlow-backup?color=green
 [badge-platforms]: https://img.shields.io/badge/platforms-macOS%2C%20Windows%2C%20Linux%2C%20Android%2C%20iOS%2C%20Web%2C%20PWA-green
-[badge-last-commit]: https://img.shields.io/github/last-commit/readest/readest?color=green
-[badge-commit-activity]: https://img.shields.io/github/commit-activity/m/readest/readest
+[badge-last-commit]: https://img.shields.io/github/last-commit/FranklinChip/ReadFlow-backup?color=green
+[badge-commit-activity]: https://img.shields.io/github/commit-activity/m/FranklinChip/ReadFlow-backup
 [badge-discord]: https://img.shields.io/discord/1314226120886976544?color=5865F2&label=discord&labelColor=black&logo=discord&logoColor=white&style=flat-square
 [badge-hellogithub]: https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=8a5b6ade2aee461a8bd94e59200682a7&claim_uid=eRLUbPOy2qZtDgw&theme=small
-[badge-donate]: https://donate.readest.com/badge.svg
-[link-donate]: https://donate.readest.com/?tickers=btc%2Ceth%2Csol%2Cusdc
+[badge-donate]: https://donate.readflow.app/badge.svg
+[link-donate]: https://donate.readflow.app/?tickers=btc%2Ceth%2Csol%2Cusdc
 [link-appstore]: https://apps.apple.com/app/apple-store/id6738622779?pt=127463130&ct=github&mt=8
-[link-website]: https://readest.com?utm_source=github&utm_medium=referral&utm_campaign=readme
-[link-web-readest]: https://web.readest.com
-[link-gh-releases]: https://github.com/readest/readest/releases
-[link-gh-commits]: https://github.com/readest/readest/commits/main
-[link-gh-pulse]: https://github.com/readest/readest/pulse
-[link-gh-wiki]: https://github.com/readest/readest/wiki
+[link-website]: https://github.com/FranklinChip/ReadFlow-backup
+[link-web-readflow]: https://web.readflow.app
+[link-gh-releases]: https://github.com/FranklinChip/ReadFlow-backup/releases
+[link-gh-commits]: https://github.com/FranklinChip/ReadFlow-backup/commits/main
+[link-gh-pulse]: https://github.com/FranklinChip/ReadFlow-backup/pulse
+[link-gh-wiki]: https://github.com/FranklinChip/ReadFlow-backup/wiki
 [link-discord]: https://discord.gg/gntyVNk3BJ
-[link-parallel-read]: https://readest.com/#parallel-read
+[link-parallel-read]: https://github.com/FranklinChip/ReadFlow-backup#parallel-read
 [link-koreader]: https://github.com/koreader/koreader
 [link-hellogithub]: https://hellogithub.com/repository/8a5b6ade2aee461a8bd94e59200682a7

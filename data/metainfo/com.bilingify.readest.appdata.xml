@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>com.bilingify.readest</id>
+  <id>com.bilingify.readflow</id>
 
-  <name>Readest</name>
-  <summary>Modern, feature-rich ebook reader for immersive reading experiences</summary>
-  <icon type="stock">com.bilingify.readest</icon>
+  <name>ReadFlow</name>
+  <summary>Intelligent English reading assistant that helps you enter flow state</summary>
+  <icon type="stock">com.bilingify.readflow</icon>
 
   <description>
-    <p>Readest is a modern, feature-rich ebook reader designed for avid readers offering seamless cross-platform access, powerful tools, and an intuitive interface to elevate your reading experience.</p>
-    <p>Built as a modern rewrite of Foliate, Readest leverages Next.js 15 and Tauri v2 to deliver a smooth, cross-platform experience across macOS, Windows, Linux, Android, iOS, and the Web.</p>
-    <p>Whether you're analyzing complex texts, immersing yourself in stories, or exploring new ideas, Readest adapts to your needs with powerful features for deep, thoughtful reading.</p>
+    <p>ReadFlow helps readers enter flow state by intelligently explaining unknown words and phrases in English books clearly and accurately.</p>
+    <p>Built as a modern rewrite of Foliate, ReadFlow leverages Next.js 15 and Tauri v2 to deliver a smooth, cross-platform experience across macOS, Windows, Linux, Android, iOS, and the Web.</p>
+    <p>Whether you're analyzing complex texts, immersing yourself in stories, or exploring new ideas, ReadFlow adapts to your needs with powerful features for deep, thoughtful reading.</p>
     <p>Key features include:</p>
     <ul>
       <li>Multi-format support for EPUB, MOBI, KF8 (AZW3), FB2, CBZ, TXT, and PDF (experimental).</li>
@@ -24,9 +24,9 @@
       <li>Cross-platform synchronization of book files, reading progress, notes, and bookmarks across all supported platforms.</li>
       <li>Text-to-Speech functionality for a more accessible reading experience.</li>
       <li>Organize, sort, and manage your entire ebook library with advanced library management tools.</li>
-      <li>One-click file association to quickly open files in Readest from your file browser.</li>
+      <li>One-click file association to quickly open files in ReadFlow from your file browser.</li>
     </ul>
-    <p>Readest also includes custom CSS support for personalized styling, and code syntax highlighting for technical books. The application is designed to honor the legacy of deep reading while embracing modern technology for an enhanced experience.</p>
+    <p>ReadFlow also includes custom CSS support for personalized styling, and code syntax highlighting for technical books. The application is designed to honor the legacy of deep reading while embracing modern technology for an enhanced experience.</p>
   </description>
 
   <categories>
@@ -36,7 +36,7 @@
   </categories>
 
   <keywords>
-    <keyword translate="no">readest</keyword>
+    <keyword translate="no">readflow</keyword>
     <keyword>ebook</keyword>
     <keyword>reader</keyword>
     <keyword>epub</keyword>
@@ -52,12 +52,12 @@
     <keyword>sync</keyword>
   </keywords>
 
-  <url type="homepage">https://readest.com</url>
-  <url type="bugtracker">https://github.com/readest/readest/issues</url>
-  <url type="help">https://github.com/readest/readest/wiki</url>
-  <url type="donation">https://github.com/sponsors/readest</url>
+  <url type="homepage">https://github.com/FranklinChip/ReadFlow-backup</url>
+  <url type="bugtracker">https://github.com/FranklinChip/ReadFlow-backup/issues</url>
+  <url type="help">https://github.com/FranklinChip/ReadFlow-backup/wiki</url>
+  <url type="donation">https://github.com/sponsors/FranklinChip</url>
 
-  <launchable type="desktop-id">com.bilingify.readest.desktop</launchable>
+  <launchable type="desktop-id">com.bilingify.readflow.desktop</launchable>
 
   <releases>
     <release version="0.9.63" date="2025-07-07">
@@ -79,7 +79,7 @@
     <release version="0.9.62" date="2025-07-02">
       <description>
         <ul>
-          <li>Subscription: You can now upgrade to Readest Premium and manage your subscription</li>
+          <li>Subscription: You can now upgrade to ReadFlow Premium and manage your subscription</li>
           <li>Reader: Added an option to toggle Parallel Reading when viewing multiple books</li>
           <li>Translation: Added an option to show or hide the original text in translations</li>
           <li>Layout: TOC on Android now uses an overlay scrollbar for easier navigation</li>
@@ -99,7 +99,7 @@
           <li>Settings: Added options to reset settings from the config dialog</li>
           <li>Import: Fixed encoded filenames when importing TXT files on iOS</li>
           <li>Linux: Fixed missing app icon on some Linux distributions</li>
-          <li>GitHub: Added donation link to support Readest development</li>
+          <li>GitHub: Added donation link to support ReadFlow development</li>
         </ul>
       </description>
     </release>
@@ -131,18 +131,18 @@
   <metadata_license>FSFAP</metadata_license>
   <project_license>AGPL-3.0-or-later</project_license>
 
-  <developer id="com.readest">
-    <name>Readest Team</name>
+  <developer id="com.readflow">
+    <name>ReadFlow Team</name>
   </developer>
 
   <screenshots>
     <screenshot type="default">
-      <caption>Readest main interface with annotation</caption>
-      <image type="source">https://raw.githubusercontent.com/readest/readest/refs/heads/main/data/screenshots/annotations.png</image>
+      <caption>ReadFlow main interface with annotation</caption>
+      <image type="source">https://raw.githubusercontent.com/FranklinChip/ReadFlow-backup/refs/heads/main/data/screenshots/annotations.png</image>
     </screenshot>
     <screenshot>
       <caption>Reading interface with dark mode</caption>
-      <image type="source">https://raw.githubusercontent.com/readest/readest/refs/heads/main/data/screenshots/dark_mode.png</image>
+      <image type="source">https://raw.githubusercontent.com/FranklinChip/ReadFlow-backup/refs/heads/main/data/screenshots/dark_mode.png</image>
     </screenshot>
   </screenshots>
 

@@ -63,7 +63,9 @@ export function useWordsAnnotation(
     const observer = createAnnotationObserver();
     observerRef.current = observer;
     const nodes = walkTextNodes(view);
-    console.log('Observing text nodes for annotation:', nodes.length);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Observing text nodes for annotation:', nodes.length);
+    }
     allTextNodes.current = nodes;
     nodes.forEach((el) => observer.observe(el));
   }, [view]);
@@ -402,7 +404,9 @@ export function useWordsAnnotation(
       }
     }
 
-    console.log(`🎯 Word matching completed: ${totalMatched}/${llmWords.length} words matched (${((totalMatched / llmWords.length) * 100).toFixed(1)}%)`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🎯 Word matching completed: ${totalMatched}/${llmWords.length} words matched (${((totalMatched / llmWords.length) * 100).toFixed(1)}%)`);
+    }
     
     return resultTokens.join('');
   }, [tokenizeText, createSingleWordRuby, normalizeText]);
@@ -448,11 +452,15 @@ export function useWordsAnnotation(
         matchCount++;
       }
     } catch (error) {
-      console.error('❌ Error during regex matching:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Error during regex matching:', error);
+      }
       return [];
     }
     
-    console.log(`🔍 Extracted ${matchCount} ruby words for phrase matching`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔍 Extracted ${matchCount} ruby words for phrase matching`);
+    }
     
     return rubyWords;
   }, []);
@@ -617,7 +625,9 @@ export function useWordsAnnotation(
             otherPhraseText.length > phraseText.length && 
             otherPhraseText.includes(phraseText)) {
           isContained = true;
-          console.log(`🔍 Phrase "${phraseText}" is contained in longer phrase "${otherPhraseText}", removing shorter one`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`🔍 Phrase "${phraseText}" is contained in longer phrase "${otherPhraseText}", removing shorter one`);
+          }
           break;
         }
       }
@@ -630,9 +640,11 @@ export function useWordsAnnotation(
     // 按长度降序处理，确保长词组优先处理
     const finalPhrases = dedupedPhrases.sort((a, b) => b.text.length - a.text.length);
     
-    console.log(`🎯 After deduplication: ${finalPhrases.length}/${allPhrases.length} phrases remaining`);
-    if (finalPhrases.length !== allPhrases.length) {
-      console.log('Remaining phrases:', finalPhrases.map(p => p.text));
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🎯 After deduplication: ${finalPhrases.length}/${allPhrases.length} phrases remaining`);
+      if (finalPhrases.length !== allPhrases.length) {
+        console.log('Remaining phrases:', finalPhrases.map(p => p.text));
+      }
     }
 
     let resultHTML = htmlText;
@@ -717,7 +729,9 @@ export function useWordsAnnotation(
       processedCount++;
     }
 
-    console.log(`🎯 Phrase matching completed: ${processedCount}/${finalPhrases.length} phrases matched`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🎯 Phrase matching completed: ${processedCount}/${finalPhrases.length} phrases matched`);
+    }
     return resultHTML;
   }, [extractRubyWordsArray, matchPhraseWithIndexes, hasWord]);
 
@@ -726,26 +740,74 @@ export function useWordsAnnotation(
     try {
       const annotationProvider = getAnnotationProvider(provider);
       if (!annotationProvider) {
-        throw new Error(`Annotation provider '${provider}' not found`);
+        const error = new Error(`注释服务 '${provider}' 未找到`);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ Annotation provider not found:', error);
+        }
+        window.dispatchEvent(new CustomEvent('annotation-error', { detail: { error } }));
+        throw error;
       }
 
-      console.log('❤️ Calling LLM for words:', text.substring(0, 50));
-      const result = await annotationProvider.annotate(`words:${text}`, targetLang);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('❤️ Calling LLM for words:', text.substring(0, 50));
+      }
+      
+      // 添加超时控制
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('LLM请求超时（30秒），请检查网络连接或稍后重试'));
+        }, 30000); // 30秒超时
+      });
+      
+      const result = await Promise.race([
+        annotationProvider.annotate(`words:${text}`, targetLang),
+        timeoutPromise
+      ]);
       
       // 打印 LLM 返回的 JSON 内容
-      console.log('🔤 LLM Words Response JSON:', JSON.stringify(result, null, 2));
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔤 LLM Words Response JSON:', JSON.stringify(result, null, 2));
+      }
+      
+      // 检查返回结果
+      if (!result) {
+        throw new Error('LLM返回空结果，请稍后重试');
+      }
+      
+      if (!result.words || result.words.length === 0) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ LLM返回了空的单词列表');
+        }
+        // 显示警告toast
+        window.dispatchEvent(new CustomEvent('annotation-error', { 
+          detail: { 
+            error: new Error('LLM没有返回任何注释，可能是文本过短或不包含需要注释的内容') 
+          } 
+        }));
+      }
       
       return { words: result.words || [], usage: result.usage };
     } catch (error) {
-      console.error(`Words annotation attempt ${attempts + 1} failed:`, error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`❌ Words annotation attempt ${attempts + 1} failed:`, error);
+      }
+      
+      // 在生产环境显示错误toast
+      if (attempts === 0) { // 只在第一次失败时显示，避免重复提示
+        window.dispatchEvent(new CustomEvent('annotation-error', { detail: { error } }));
+      }
       
       if (attempts < retryAttempts) {
         const delay = retryDelay * Math.pow(2, attempts);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`🔄 Retrying in ${delay}ms... (attempt ${attempts + 1}/${retryAttempts})`);
+        }
         await new Promise(resolve => setTimeout(resolve, delay));
         return annotateWordsWithRetry(text, targetLang, attempts + 1);
       }
       
-      return { words: [] };
+      // 最终失败时抛出错误
+      throw error;
     }
   }, [provider, retryAttempts, retryDelay]);
 
@@ -754,25 +816,63 @@ export function useWordsAnnotation(
     try {
       const annotationProvider = getAnnotationProvider(provider);
       if (!annotationProvider) {
-        throw new Error(`Annotation provider '${provider}' not found`);
+        const error = new Error(`注释服务 '${provider}' 未找到`);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ Annotation provider not found:', error);
+        }
+        window.dispatchEvent(new CustomEvent('annotation-error', { detail: { error } }));
+        throw error;
       }
 
-      console.log('🏷️ Calling LLM for phrases and proper nouns:', text.substring(0, 50));
-      const result = await annotationProvider.annotate(`phrases:${text}`, targetLang);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🏷️ Calling LLM for phrases and proper nouns:', text.substring(0, 50));
+      }
+      
+      // 添加超时控制
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('词组注释请求超时（30秒），请检查网络连接或稍后重试'));
+        }, 30000); // 30秒超时
+      });
+      
+      const result = await Promise.race([
+        annotationProvider.annotate(`phrases:${text}`, targetLang),
+        timeoutPromise
+      ]);
       
       // 打印 LLM 返回的 JSON 内容
-      console.log('🏷️ LLM Phrases Response JSON:', JSON.stringify(result, null, 2));
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🏷️ LLM Phrases Response JSON:', JSON.stringify(result, null, 2));
+      }
+      
+      // 检查返回结果
+      if (!result) {
+        throw new Error('LLM返回空结果，请稍后重试');
+      }
       
       return { mwes: result.mwes || [], proper_nouns: result.proper_nouns || [], usage: result.usage };
     } catch (error) {
-      console.error(`Phrases annotation attempt ${attempts + 1} failed:`, error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`❌ Phrases annotation attempt ${attempts + 1} failed:`, error);
+      }
+      
+      // 在生产环境显示错误toast（词组失败不一定要中断整个流程）
+      if (attempts === 0) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ 词组注释失败，但单词注释可能仍然有效');
+        }
+      }
       
       if (attempts < retryAttempts) {
         const delay = retryDelay * Math.pow(2, attempts);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`🔄 Retrying phrases in ${delay}ms... (attempt ${attempts + 1}/${retryAttempts})`);
+        }
         await new Promise(resolve => setTimeout(resolve, delay));
         return annotatePhrasesAndProperNounsWithRetry(text, targetLang, attempts + 1);
       }
       
+      // 词组失败不影响单词注释，返回空结果而不是抛出错误
       return { mwes: [], proper_nouns: [] };
     }
   }, [provider, retryAttempts, retryDelay]);
@@ -826,7 +926,9 @@ export function useWordsAnnotation(
       const targetLang = viewSettings?.wordAnnotationLanguage || getLocale();
 
       // 并行调用两个LLM请求（打包处理）
-      console.log(`� Requesting annotations for: "${text.substring(0, 50)}..."`);
+      if (process.env.NODE_ENV === "development") {
+        console.log(`🚀 Requesting annotations for: "${text.substring(0, 50)}..."`);
+      }
       const [wordsResult, phrasesResult] = await Promise.all([
         annotateWordsWithRetry(text, targetLang),
         annotatePhrasesAndProperNounsWithRetry(text, targetLang)
@@ -834,6 +936,20 @@ export function useWordsAnnotation(
 
       // 检查是否还需要处理（防止并发时重复处理）
       if (!enabledRef.current || isElementAnnotated(el)) {
+        console.log('⚠️ 注释过程中设置已改变或元素已被注释，跳过处理');
+        setIsAnnotating(false);
+        window.dispatchEvent(new CustomEvent('annotation-end', { detail: { element: el } }));
+        return;
+      }
+
+      // 检查LLM返回结果
+      const hasWords = wordsResult && wordsResult.words && wordsResult.words.length > 0;
+      const hasPhrases = phrasesResult && ((phrasesResult.mwes && phrasesResult.mwes.length > 0) || (phrasesResult.proper_nouns && phrasesResult.proper_nouns.length > 0));
+
+      if (!hasWords && !hasPhrases) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ LLM没有返回任何有效的注释内容');
+        }
         setIsAnnotating(false);
         window.dispatchEvent(new CustomEvent('annotation-end', { detail: { element: el } }));
         return;
@@ -841,18 +957,23 @@ export function useWordsAnnotation(
 
       // 打包处理匹配逻辑
       let processedHTML = text;
+      let totalAnnotations = 0;
       
       // 第一步：处理单词注释
-      if (wordsResult && wordsResult.words.length > 0) {
-        console.log(`🔤 Processing ${wordsResult.words.length} word annotations`);
+      if (hasWords) {
+        console.log(`🔤 处理 ${wordsResult.words.length} 个单词注释`);
         processedHTML = createOrderedWordRubyAnnotations(text, wordsResult, targetLang);
+        totalAnnotations += wordsResult.words.length;
       }
       
       // 第二步：处理词组和专有名词注释
-      if (phrasesResult && (phrasesResult.mwes.length > 0 || phrasesResult.proper_nouns.length > 0) && 
+      if (hasPhrases && 
           (viewSettings?.phraseAnnotationEnabled || viewSettings?.wordAnnotationEnabled)) {
-        console.log(`🏷️ Processing ${phrasesResult.mwes.length} MWEs and ${phrasesResult.proper_nouns.length} proper nouns`);
+        const mweCount = phrasesResult.mwes?.length || 0;
+        const pnCount = phrasesResult.proper_nouns?.length || 0;
+        console.log(`🏷️ 处理 ${mweCount} 个多词表达和 ${pnCount} 个专有名词`);
         processedHTML = createIndexBasedPhraseAnnotations(processedHTML, phrasesResult, targetLang);
+        totalAnnotations += mweCount + pnCount;
       }
 
       // 更新DOM（只有在内容发生变化时才更新）
@@ -866,13 +987,28 @@ export function useWordsAnnotation(
           annotatedElements.current.push(el);
         }
         
-        console.log(`✅ Annotation completed for element: "${text.substring(0, 50)}..."`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`✅ 注释完成: "${text.substring(0, 50)}..." (共${totalAnnotations}个注释)`);
+        }
+      } else {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('⚠️ 处理后的HTML与原文本相同，没有找到可注释的内容');
+        }
       }
       
       // 发送注释结束事件
       window.dispatchEvent(new CustomEvent('annotation-end', { detail: { element: el } }));
     } catch (error) {
-      console.error('Failed to annotate element:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ 注释元素失败:', error);
+        console.error('❌ 详细错误信息:', {
+          name: error instanceof Error ? error.name : 'Unknown',
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : 'No stack trace',
+          cause: error instanceof Error ? error.cause : undefined
+        });
+      }
+      
       // 发送注释错误事件
       window.dispatchEvent(new CustomEvent('annotation-error', { detail: { element: el, error } }));
     } finally {
@@ -880,7 +1016,7 @@ export function useWordsAnnotation(
     }
   }, [enabledRef, isElementAnnotated, annotateWordsWithRetry, annotatePhrasesAndProperNounsWithRetry, 
       createOrderedWordRubyAnnotations, createIndexBasedPhraseAnnotations, 
-      viewSettings?.phraseAnnotationEnabled, viewSettings?.wordAnnotationEnabled, viewSettings?.wordAnnotationLanguage, setIsAnnotating]);
+      viewSettings?.phraseAnnotationEnabled, viewSettings?.wordAnnotationEnabled, viewSettings?.wordAnnotationLanguage, setIsAnnotating, provider]);
 
   // 在范围内注释（类似translation的translateInRange）
   const annotateInRange = useCallback(

@@ -11,7 +11,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { useParallelViewStore } from '@/store/parallelViewStore';
 import { isWebAppPlatform } from '@/services/environment';
 import { eventDispatcher } from '@/utils/event';
-import { DOWNLOAD_READEST_URL } from '@/services/constants';
+import { DOWNLOAD_READFLOW_URL } from '@/services/constants';
 import useBooksManager from '../../hooks/useBooksManager';
 import MenuItem from '@/components/MenuItem';
 
@@ -39,13 +39,11 @@ const BookMenu: React.FC<BookMenuProps> = ({ menuClassName, setIsDropdownOpen })
     window.location.reload();
     setIsDropdownOpen?.(false);
   };
-  const showAboutReadest = () => {
+  const showAboutReadFlow = () => {
     setAboutDialogVisible(true);
-    setIsDropdownOpen?.(false);
   };
-  const downloadReadest = () => {
-    window.open(DOWNLOAD_READEST_URL, '_blank');
-    setIsDropdownOpen?.(false);
+  const downloadReadFlow = () => {
+    window.open(DOWNLOAD_READFLOW_URL, '_blank');
   };
   const handleExportAnnotations = () => {
     eventDispatcher.dispatch('export-annotations', { bookKey: sideBarBookKey });
@@ -125,8 +123,8 @@ const BookMenu: React.FC<BookMenuProps> = ({ menuClassName, setIsDropdownOpen })
       />
       <MenuItem label={_('Reload Page')} shortcut='Shift+R' onClick={handleReloadPage} />
       <hr className='border-base-200 my-1' />
-      {isWebApp && <MenuItem label={_('Download Readest')} onClick={downloadReadest} />}
-      <MenuItem label={_('About Readest')} onClick={showAboutReadest} />
+      {isWebApp && <MenuItem label={_('Download ReadFlow')} onClick={downloadReadFlow} />}
+      <MenuItem label={_('About ReadFlow')} onClick={showAboutReadFlow} />
     </div>
   );
 };

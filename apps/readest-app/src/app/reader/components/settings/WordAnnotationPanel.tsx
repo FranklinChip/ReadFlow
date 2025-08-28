@@ -50,6 +50,15 @@ const WordAnnotationPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegi
   // 专有名词标注相关状态
   const [propnAnnotationEnabled, setPropnAnnotationEnabled] = useState(viewSettings.propnAnnotationEnabled ?? true);
 
+  // API Key 配置状态
+  const [qwenApiKey, setQwenApiKey] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('qwen_api_key') || '';
+    }
+    return '';
+  });
+  const [showApiKey, setShowApiKey] = useState(false);
+
   const handleReset = () => {
     // 简化重置逻辑，不使用复杂的类型
   };
@@ -124,6 +133,26 @@ const WordAnnotationPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegi
   useEffect(() => {
     saveSettingsOptimized('propnAnnotationEnabled', propnAnnotationEnabled);
   }, [propnAnnotationEnabled, saveSettingsOptimized]);
+
+  // API Key 保存逻辑
+  const handleApiKeyChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setQwenApiKey(value);
+    if (typeof window !== 'undefined') {
+      if (value.trim()) {
+        localStorage.setItem('qwen_api_key', value.trim());
+      } else {
+        localStorage.removeItem('qwen_api_key');
+      }
+    }
+  };
+
+  const clearApiKey = () => {
+    setQwenApiKey('');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('qwen_api_key');
+    }
+  };
 
   // 选项数据
   const getLanguageOptions = () => {
@@ -324,6 +353,48 @@ const WordAnnotationPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegi
           </div>
         </div>
       )}
+
+      {/* API 配置设置 */}
+      <div className='w-full'>
+        <h2 className='mb-2 font-medium'>{_('API Configuration')}</h2>
+        <div className='card border-base-200 bg-base-100 border shadow'>
+          <div className='divide-base-200 divide-y'>
+            <div className='config-item flex-col items-start space-y-2'>
+              <div className='flex w-full items-center justify-between'>
+                <span className='font-medium'>{_('Qwen API Key')}</span>
+                <div className='flex items-center space-x-2'>
+                  <button
+                    type='button'
+                    className='btn btn-ghost btn-xs'
+                    onClick={() => setShowApiKey(!showApiKey)}
+                  >
+                    {showApiKey ? _('Hide') : _('Show')}
+                  </button>
+                  {qwenApiKey && (
+                    <button
+                      type='button'
+                      className='btn btn-ghost btn-xs text-error'
+                      onClick={clearApiKey}
+                    >
+                      {_('Clear')}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <input
+                type={showApiKey ? 'text' : 'password'}
+                className='input input-bordered input-sm w-full'
+                placeholder={_('Enter your Qwen API key...')}
+                value={qwenApiKey}
+                onChange={handleApiKeyChange}
+              />
+              <div className='text-xs text-base-content/70'>
+                {_('Required for word annotation to work. Get your API key from')} <a href="https://dashscope.aliyuncs.com/" target="_blank" rel="noopener noreferrer" className="link link-primary">DashScope</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

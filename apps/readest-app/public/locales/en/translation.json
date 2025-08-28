@@ -27,5 +27,12 @@
   "Over": "Over",
   "Under": "Under",
   "Chinese": "Chinese",
-  "English": "English"
+  "English": "English",
+  "API Configuration": "API Configuration",
+  "Qwen API Key": "Qwen API Key",
+  "Hide": "Hide",
+  "Show": "Show",
+  "Clear": "Clear",
+  "Enter your Qwen API key...": "Enter your Qwen API key...",
+  "Required for word annotation to work. Get your API key from": "Required for word annotation to work. Get your API key from"
 }

@@ -16,8 +16,8 @@ import { UserStorageQuota, UserDailyTranslationQuota } from '@/types/user';
 import { getDefaultMaxBlockSize, getDefaultMaxInlineSize } from '@/utils/config';
 import { stubTranslation as _ } from '@/utils/misc';
 
-export const LOCAL_BOOKS_SUBDIR = 'Readest/Books';
-export const CLOUD_BOOKS_SUBDIR = 'Readest/Books';
+export const LOCAL_BOOKS_SUBDIR = 'ReadFlow/Books';
+export const CLOUD_BOOKS_SUBDIR = 'ReadFlow/Books';
 
 export const SUPPORTED_FILE_EXTS = [
   'epub',
@@ -547,15 +547,15 @@ export const CJK_FONTS_PATTENS = new RegExp(
 
 export const BOOK_IDS_SEPARATOR = '+';
 
-export const DOWNLOAD_READEST_URL = 'https://readest.com?utm_source=readest_web';
+export const DOWNLOAD_READFLOW_URL = 'https://github.com/FranklinChip/ReadFlow-backup';
 
-export const READEST_WEB_BASE_URL = 'https://web.readest.com';
+export const READFLOW_WEB_BASE_URL = 'https://web.readflow.app';
 
-const LATEST_DOWNLOAD_BASE_URL = 'https://download.readest.com/releases';
+const LATEST_DOWNLOAD_BASE_URL = 'https://download.readflow.app/releases';
 
-export const READEST_UPDATER_FILE = `${LATEST_DOWNLOAD_BASE_URL}/latest.json`;
+export const READFLOW_UPDATER_FILE = `${LATEST_DOWNLOAD_BASE_URL}/latest.json`;
 
-export const READEST_CHANGELOG_FILE = `${LATEST_DOWNLOAD_BASE_URL}/release-notes.json`;
+export const READFLOW_CHANGELOG_FILE = `${LATEST_DOWNLOAD_BASE_URL}/release-notes.json`;
 
 export const SYNC_PROGRESS_INTERVAL_SEC = 3;
 export const SYNC_NOTES_INTERVAL_SEC = 5;

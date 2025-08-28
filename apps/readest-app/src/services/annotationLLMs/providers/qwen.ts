@@ -5,8 +5,46 @@ export const qwenProvider: AnnotationProvider = {
   label: 'Qwen Flash',
   
   annotate: async (text: string, targetLanguage?: string): Promise<AnnotationResponse> => {
-    const apiKey = 'sk-f9c25a7cd97d4fa0b1f096d381ad63fb';
+    // 获取API key的优先级：用户设置 > 环境变量 > 默认key（开发用）
+    const getUserApiKey = () => {
+      // 从本地存储获取用户设置的API key
+      if (typeof window !== 'undefined') {
+        const userApiKey = localStorage.getItem('qwen_api_key');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔑 User API key from localStorage:', userApiKey ? `${userApiKey.substring(0, 8)}...` : 'null');
+        }
+        if (userApiKey && userApiKey.trim()) {
+          return userApiKey.trim();
+        }
+      }
+      
+      // 从环境变量获取
+      const envApiKey = process.env['NEXT_PUBLIC_QWEN_API_KEY'] || process.env['QWEN_API_KEY'];
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔑 Env API key:', envApiKey ? `${envApiKey.substring(0, 8)}...` : 'null');
+      }
+      if (envApiKey && envApiKey.trim()) {
+        return envApiKey.trim();
+      }
+      
+      // 开发环境默认key（生产环境应该被上面的覆盖）
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔑 No API key found');
+      }
+      return ''; // 移除硬编码的 API key，强制用户配置
+    };
+
+    const apiKey = getUserApiKey();
     const apiUrl = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+    
+    // 检查API key是否有效
+    if (!apiKey || apiKey.length < 10) {
+      throw new Error('请在设置 > 词汇注释 > API配置中添加有效的 Qwen API 密钥');
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔑 Using API key:', apiKey.substring(0, 8) + '...');
+    }
     
     // 根据缓存键前缀判断是查询单词还是词组/专有名词
     const isPhrasesQuery = text.startsWith('phrases:');
@@ -146,6 +184,19 @@ Return results in the specified JSON format with annotations in ${targetLanguage
     }
 
     try {
+      // 检查运行环境
+      const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+      const isDev = process.env.NODE_ENV === 'development';
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🌍 Environment check:', {
+          isTauri,
+          isDev,
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown',
+          platform: typeof navigator !== 'undefined' ? navigator.platform : 'Unknown'
+        });
+      }
+      
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -176,14 +227,18 @@ Return results in the specified JSON format with annotations in ${targetLanguage
       const content = data.choices[0].message.content;
       const usage = data.usage; // 获取token使用信息
       
-      console.log('🔍 Token usage:', usage);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Token usage:', usage);
+      }
     
       
       try {
         const result = JSON.parse(content);
         
         // 添加解析后的结果日志
-        console.log('✅ Parsed LLM Result:', JSON.stringify(result, null, 2));
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Parsed LLM Result:', JSON.stringify(result, null, 2));
+        }
         
         // 根据查询类型验证响应格式
         if (isPhrasesQuery) {
@@ -210,26 +265,89 @@ Return results in the specified JSON format with annotations in ${targetLanguage
           };
         }
       } catch (parseError) {
-        console.error('JSON parse error:', parseError);
-        console.error('Raw response:', content);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('JSON parse error:', parseError);
+          console.error('Raw response:', content);
+        }
         throw new Error(ErrorCodes.PARSE_ERROR);
       }
       
     } catch (error) {
-      console.error('Qwen annotation error:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Qwen annotation error:', error);
+        console.error('Error details:', {
+          name: error instanceof Error ? error.name : 'Unknown',
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : 'No stack trace'
+        });
+      }
       
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error(ErrorCodes.NETWORK_ERROR);
+      // 检查是否是 CSP 相关错误
+      if (error instanceof Error && (
+        error.message.includes('Content Security Policy') ||
+        error.message.includes('CSP') ||
+        error.message.includes('net::ERR_BLOCKED_BY_CLIENT') ||
+        error.message.includes('blocked by the client')
+      )) {
+        throw new Error('请求被安全策略阻止：需要在应用配置中添加 dashscope.aliyuncs.com 到允许列表。');
+      }
+      
+      // 检查是否是 fetch 或加载相关错误
+      if (error instanceof TypeError) {
+        if (error.message.includes('fetch') || error.message.includes('Failed to fetch')) {
+          throw new Error('网络连接错误：无法连接到Qwen服务。这可能是CSP配置问题，请检查应用安全设置。');
+        }
+        if (error.message.includes('load failed') || error.message.toLowerCase().includes('load')) {
+          throw new Error('网络加载失败：可能是CSP安全策略阻止了外部API访问。请检查应用配置。');
+        }
+        if (error.message.includes('NetworkError') || error.message.includes('net::')) {
+          throw new Error('网络错误：请检查应用是否允许访问外部API（CSP配置）。');
+        }
+      }
+      
+      // 检查是否是 CORS 或跨域问题（生产环境常见）
+      if (error instanceof Error && (
+        error.message.includes('CORS') || 
+        error.message.includes('cross-origin') ||
+        error.message.includes('blocked by CORS policy')
+      )) {
+        throw new Error('跨域访问被阻止：生产环境安全配置问题。请检查CSP设置是否允许访问 dashscope.aliyuncs.com。');
       }
       
       if (error instanceof Error) {
-        if (error.message.includes('quota') || error.message.includes('429')) {
-          throw new Error(ErrorCodes.QUOTA_EXCEEDED);
+        // API key相关错误
+        if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+          throw new Error('API密钥无效或已过期。请检查您的Qwen API密钥设置。');
         }
-        throw error;
+        
+        if (error.message.includes('quota') || error.message.includes('429')) {
+          throw new Error('API配额已耗尽或请求过于频繁。请稍后重试或检查您的Qwen账户配额。');
+        }
+        
+        if (error.message.includes('403') || error.message.includes('Forbidden')) {
+          throw new Error('API访问被禁止。请检查您的Qwen API密钥权限设置。');
+        }
+        
+        // 处理服务器错误
+        if (error.message.includes('500') || error.message.includes('502') || error.message.includes('503')) {
+          throw new Error('Qwen服务器暂时不可用，请稍后重试。');
+        }
+        
+        // 处理超时错误
+        if (error.message.includes('timeout') || error.message.includes('TimeoutError')) {
+          throw new Error('请求超时：网络连接过慢或服务器响应延迟。');
+        }
+        
+        // 如果是我们自定义的错误，直接抛出
+        if (error.message.includes('API Key未配置') || error.message.includes('API配置')) {
+          throw error;
+        }
+        
+        // 对于其他原始错误，也显示给用户以便调试
+        throw new Error(`注释服务错误: ${error.message}`);
       }
       
-      throw new Error(ErrorCodes.LLM_API_ERROR);
+      throw new Error('词汇注释服务暂时不可用，请稍后重试。');
     }
   }
 };

@@ -16,7 +16,7 @@ import { tauriDownload } from '@/utils/transfer';
 import { installPackage } from '@/utils/bridge';
 import { getLocale } from '@/utils/misc';
 import { setLastShownReleaseNotesVersion } from '@/helpers/updater';
-import { READEST_UPDATER_FILE, READEST_CHANGELOG_FILE } from '@/services/constants';
+import { READFLOW_UPDATER_FILE, READFLOW_CHANGELOG_FILE } from '@/services/constants';
 import Dialog from '@/components/Dialog';
 import Link from './Link';
 
@@ -107,7 +107,7 @@ export const UpdaterContent = ({
     };
     const checkAndroidUpdate = async () => {
       const fetch = isTauriAppPlatform() ? tauriFetch : window.fetch;
-      const response = await fetch(READEST_UPDATER_FILE);
+      const response = await fetch(READFLOW_UPDATER_FILE);
       const data = await response.json();
       if (semver.gt(data.version, currentVersion)) {
         const OS_ARCH = osArch();
@@ -115,7 +115,7 @@ export const UpdaterContent = ({
         const arch = OS_ARCH === 'aarch64' ? 'arm64' : 'universal';
         const downloadUrl = data.platforms[platformKey]?.url as string;
         const cachePrefix = appService?.fs.getPrefix('Cache');
-        const apkFilePath = `${cachePrefix}/Readest_${data.version}_${arch}.apk`;
+        const apkFilePath = `${cachePrefix}/ReadFlow_${data.version}_${arch}.apk`;
         setUpdate({
           currentVersion,
           version: data.version,
@@ -200,7 +200,7 @@ export const UpdaterContent = ({
     const fetchChangelogs = async (fromVersion: string): Promise<Changelog[]> => {
       try {
         const fetch = isTauriAppPlatform() ? tauriFetch : window.fetch;
-        const res = await fetch(READEST_CHANGELOG_FILE);
+        const res = await fetch(READFLOW_CHANGELOG_FILE);
         const data: ReleaseNotes = await res.json();
         const releases = data.releases;
 
@@ -311,10 +311,10 @@ export const UpdaterContent = ({
           {checkUpdate ? (
             <div className='text-base-content flex-grow text-sm'>
               <h2 className='mb-4 text-center font-bold sm:text-start'>
-                {_('A new version of Readest is available!')}
+                {_('A new version of ReadFlow is available!')}
               </h2>
               <p className='mb-2'>
-                {_('Readest {{newVersion}} is available (installed version {{currentVersion}}).', {
+                {_('ReadFlow {{newVersion}} is available (installed version {{currentVersion}}).', {
                   newVersion,
                   currentVersion,
                 })}
@@ -379,7 +379,7 @@ export const UpdaterContent = ({
 
                     {appService?.isAndroidApp && (
                       <Link
-                        href='https://play.google.com/store/apps/details?id=com.bilingify.readest'
+                        href='https://play.google.com/store/apps/details?id=com.bilingify.readflow'
                         target='_blank'
                         rel='noopener noreferrer'
                         className='btn btn-primary btn-sm'
@@ -478,7 +478,7 @@ export const UpdaterWindow = () => {
     <Dialog
       id='updater_window'
       isOpen={isOpen}
-      title={checkUpdate ? _('Software Update') : _("What's New in Readest")}
+      title={checkUpdate ? _('Software Update') : _("What's New in ReadFlow")}
       onClose={() => setIsOpen(false)}
       boxClassName='sm:!w-[75%] sm:h-auto sm:!max-h-[85vh] sm:!max-w-2xl'
     >

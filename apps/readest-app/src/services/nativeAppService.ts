@@ -30,7 +30,7 @@ import { LOCAL_BOOKS_SUBDIR } from './constants';
 declare global {
   interface Window {
     IS_ROUNDED?: boolean;
-    __READEST_UPDATER_DISABLED?: boolean;
+    __READFLOW_UPDATER_DISABLED?: boolean;
   }
 }
 
@@ -226,11 +226,11 @@ export class NativeAppService extends BaseAppService {
   override hasUpdater =
     OS_TYPE !== 'ios' &&
     !process.env['NEXT_PUBLIC_DISABLE_UPDATER'] &&
-    !window.__READEST_UPDATER_DISABLED;
+    !window.__READFLOW_UPDATER_DISABLED;
   // orientation lock is not supported on iPad
   override hasOrientationLock =
     (OS_TYPE === 'ios' && getOSPlatform() === 'ios') || OS_TYPE === 'android';
-  override distChannel = process.env['NEXT_PUBLIC_DIST_CHANNEL'] || 'readest';
+  override distChannel = process.env['NEXT_PUBLIC_DIST_CHANNEL'] || 'readflow';
 
   override resolvePath(fp: string, base: BaseDir): { baseDir: number; base: BaseDir; fp: string } {
     return resolvePath(fp, base);

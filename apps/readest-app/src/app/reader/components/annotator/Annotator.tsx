@@ -517,7 +517,7 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
     lines.push(`# ${book.title}`);
     lines.push(`**${_('Author')}**: ${book.author || ''}`);
     lines.push('');
-    lines.push(`**${_('Exported from Readest')}**: ${new Date().toISOString().slice(0, 10)}`);
+    lines.push(`**${_('Exported from ReadFlow')}**: ${new Date().toISOString().slice(0, 10)}`);
     lines.push('');
     lines.push('---');
     lines.push('');

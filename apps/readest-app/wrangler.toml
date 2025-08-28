@@ -1,4 +1,4 @@
-name = "readest-web"
+name = "readflow-web"
 main = ".open-next/worker.js"
 compatibility_date = "2025-02-04"
 compatibility_flags = ["nodejs_compat"]
@@ -13,4 +13,4 @@ id = "${TRANSLATIONS_KV_ID}"
 
 [[r2_buckets]]
 binding = "NEXT_INC_CACHE_R2_BUCKET"
-bucket_name = "readest-next-inc-cache"
+bucket_name = "readflow-next-inc-cache"

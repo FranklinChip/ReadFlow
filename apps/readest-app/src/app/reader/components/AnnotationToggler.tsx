@@ -87,7 +87,8 @@ const AnnotationToggler = ({ bookKey }: { bookKey: string }) => {
     const handleAnnotationEnd = () => setIsAnnotating(false);
     const handleAnnotationError = (event: CustomEvent) => {
       setIsAnnotating(false);
-      console.error('Annotation error:', event.detail?.error);
+      const error = event.detail?.error;
+      console.error('Annotation error:', error);
     };
 
     window.addEventListener('annotation-start', handleAnnotationStart);

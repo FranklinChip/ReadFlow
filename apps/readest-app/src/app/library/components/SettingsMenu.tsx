@@ -9,7 +9,7 @@ import { BiMoon, BiSun } from 'react-icons/bi';
 
 import { setAboutDialogVisible } from '@/components/AboutWindow';
 import { isTauriAppPlatform, isWebAppPlatform } from '@/services/environment';
-import { DOWNLOAD_READEST_URL } from '@/services/constants';
+import { DOWNLOAD_READFLOW_URL } from '@/services/constants';
 import { useAuth } from '@/context/AuthContext';
 import { useEnv } from '@/context/EnvContext';
 import { useThemeStore } from '@/store/themeStore';
@@ -48,14 +48,12 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ setIsDropdownOpen }) => {
   const [isTelemetryEnabled, setIsTelemetryEnabled] = useState(settings.telemetryEnabled);
   const iconSize = useResponsiveSize(16);
 
-  const showAboutReadest = () => {
+  const showAboutReadFlow = () => {
     setAboutDialogVisible(true);
-    setIsDropdownOpen?.(false);
   };
 
-  const downloadReadest = () => {
-    window.open(DOWNLOAD_READEST_URL, '_blank');
-    setIsDropdownOpen?.(false);
+  const downloadReadFlow = () => {
+    window.open(DOWNLOAD_READFLOW_URL, '_blank');
   };
 
   const handleUserLogin = () => {
@@ -253,12 +251,12 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ setIsDropdownOpen }) => {
       />
       <hr className='border-base-200 my-1' />
       {user && userPlan === 'free' && !appService?.isIOSApp && (
-        <MenuItem label={_('Upgrade to Readest Premium')} onClick={handleUpgrade} />
+        <MenuItem label={_('Upgrade to ReadFlow Premium')} onClick={handleUpgrade} />
       )}
-      {isWebAppPlatform() && <MenuItem label={_('Download Readest')} onClick={downloadReadest} />}
-      <MenuItem label={_('About Readest')} onClick={showAboutReadest} />
+      {isWebAppPlatform() && <MenuItem label={_('Download ReadFlow')} onClick={downloadReadFlow} />}
+      <MenuItem label={_('About ReadFlow')} onClick={showAboutReadFlow} />
       <MenuItem
-        label={_('Help improve Readest')}
+        label={_('Help improve ReadFlow')}
         description={isTelemetryEnabled ? _('Sharing anonymized statistics') : ''}
         Icon={isTelemetryEnabled ? MdCheck : undefined}
         onClick={toggleTelemetry}
