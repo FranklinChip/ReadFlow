@@ -143,7 +143,7 @@ export function useWordsAnnotation(
     nextElements.forEach((element, index) => {
       setTimeout(() => {
         annotateElement(element);
-      }, index * 300); // 比翻译稍快一些
+      }, index * 1000); 
     });
   }, []);
 
@@ -202,10 +202,6 @@ export function useWordsAnnotation(
       // 统一各种引号
       .replace(/[''`]/g, "'")      // 将中文单引号、反引号统一为英文单引号
       .replace(/[""]/g, '"')       // 将中文双引号统一为英文双引号
-      // 统一各种连字符和短横线
-      .replace(/[—–−]/g, '-')      // 将长短横线统一为连字符
-      // 统一省略号
-      .replace(/…/g, '...')
       // 去除零宽字符
       .replace(/[\u200B-\u200D\uFEFF]/g, '');
   }, []);
@@ -264,7 +260,62 @@ export function useWordsAnnotation(
           break;
         }
 
-        // 2. 跨token合并匹配 (2-4个token) - 只匹配真正需要合并的情况
+        // 2. 新增：LLM单词token化匹配 - 处理像"grown-up"这样的复合词
+        const llmWordTokens = tokenizeText(currentWord.word);
+        if (llmWordTokens.length > 1 && llmWordTokens.length <= 4) {
+          // 检查是否有足够的原文token来匹配
+          const endIndex = searchIndex + llmWordTokens.length;
+          if (endIndex <= tokens.length) {
+            // 检查范围内的token是否已被处理
+            let hasProcessedToken = false;
+            for (let i = searchIndex; i < endIndex; i++) {
+              if (processedRanges.has(i)) {
+                hasProcessedToken = true;
+                break;
+              }
+            }
+            
+            if (!hasProcessedToken) {
+              // 提取原文对应范围的token
+              const originalTokens = tokens.slice(searchIndex, endIndex);
+              
+              // 逐个比较token（都标准化后比较）
+              let allMatch = true;
+              for (let i = 0; i < llmWordTokens.length; i++) {
+                const llmToken = normalizeText(llmWordTokens[i] || '');
+                const originalToken = normalizeText(originalTokens[i] || '');
+                if (llmToken !== originalToken) {
+                  allMatch = false;
+                  break;
+                }
+              }
+              
+              if (allMatch) {
+                // 创建跨token的ruby标签，保持原始token的组合显示
+                const combinedDisplay = originalTokens.join('');
+                const multiTokenRuby = createSingleWordRuby(combinedDisplay, currentWord, wordIndex, targetLang);
+                
+                // 在第一个token位置创建ruby标签
+                resultTokens[searchIndex] = multiTokenRuby;
+                // 标记其他token位置为已处理（设为空字符串）
+                for (let i = searchIndex + 1; i < endIndex; i++) {
+                  resultTokens[i] = '';
+                  processedRanges.add(i);
+                }
+                
+                processedRanges.add(searchIndex);
+                wordIndex++;
+                totalMatched++;
+                tokenIndex = endIndex;
+                consecutiveFailures = 0;
+                found = true;
+                break;
+              }
+            }
+          }
+        }
+
+        // 3. 跨token合并匹配 (2-4个token) - 只匹配真正需要合并的情况
         for (let combineLength = 2; combineLength <= Math.min(4, searchEnd - searchIndex); combineLength++) {
           const endIndex = searchIndex + combineLength;
           
@@ -545,13 +596,44 @@ export function useWordsAnnotation(
       return htmlText;
     }
     
-    // 合并处理词组和专有名词，按长度降序处理
+    // 合并处理词组和专有名词
     const allPhrases = [
       ...annotations.mwes.map(mwe => ({ ...mwe, type: 'mwe' as const, text: mwe.phrase })),
       ...annotations.proper_nouns.map(pn => ({ ...pn, type: 'proper_noun' as const, text: pn.phrase }))
     ]
-      .filter(item => item.text && item.text.trim())
-      .sort((a, b) => b.text.length - a.text.length);
+      .filter(item => item.text && item.text.trim());
+
+    // 去重逻辑：如果一个词组/专有名词包含在另一个更长的词组/专有名词中，则移除较短的
+    const dedupedPhrases = [];
+    const phrasesSet = new Set(allPhrases.map(p => p.text.toLowerCase().trim()));
+    
+    for (const phrase of allPhrases) {
+      const phraseText = phrase.text.toLowerCase().trim();
+      let isContained = false;
+      
+      // 检查是否被其他更长的词组包含
+      for (const otherPhraseText of phrasesSet) {
+        if (otherPhraseText !== phraseText && 
+            otherPhraseText.length > phraseText.length && 
+            otherPhraseText.includes(phraseText)) {
+          isContained = true;
+          console.log(`🔍 Phrase "${phraseText}" is contained in longer phrase "${otherPhraseText}", removing shorter one`);
+          break;
+        }
+      }
+      
+      if (!isContained) {
+        dedupedPhrases.push(phrase);
+      }
+    }
+    
+    // 按长度降序处理，确保长词组优先处理
+    const finalPhrases = dedupedPhrases.sort((a, b) => b.text.length - a.text.length);
+    
+    console.log(`🎯 After deduplication: ${finalPhrases.length}/${allPhrases.length} phrases remaining`);
+    if (finalPhrases.length !== allPhrases.length) {
+      console.log('Remaining phrases:', finalPhrases.map(p => p.text));
+    }
 
     let resultHTML = htmlText;
     const processedRanges = new Set<string>(); // 记录已处理的索引范围
@@ -559,7 +641,7 @@ export function useWordsAnnotation(
     
     const langClass = targetLang === 'zh-CN' ? 'zh' : targetLang === 'en' ? 'en' : targetLang;
 
-    for (const item of allPhrases) {
+    for (const item of finalPhrases) {
       const phrase = item.text.trim();
       
       // 使用索引匹配查找词组
@@ -635,7 +717,7 @@ export function useWordsAnnotation(
       processedCount++;
     }
 
-    console.log(`🎯 Phrase matching completed: ${processedCount}/${allPhrases.length} phrases matched`);
+    console.log(`🎯 Phrase matching completed: ${processedCount}/${finalPhrases.length} phrases matched`);
     return resultHTML;
   }, [extractRubyWordsArray, matchPhraseWithIndexes, hasWord]);
 

@@ -42,11 +42,11 @@ export const qwenProvider: AnnotationProvider = {
     
     if (isPhrasesQuery) {
       // 词组和多词专有名词查询的prompt
-      systemPrompt = `You are an expert English language assistant. Your task is to identify meaningful phrases and multi-word proper nouns in English text.
+      systemPrompt = `You are an expert English language teacher. Your task is to identify all the meaningful phrases and multi-word proper nouns in English text.
 
 Find and explain:
 1. **Multi-word proper nouns** (it must be 2+ words): Names of people, places, organizations, brands, etc.
-2. **Meaningful phrases**: Idioms, phrasal verbs, collocations with special meanings
+2. **Meaningful phrases**: Idioms, phrasal verbs, collocations
 
 Return your findings in JSON format:
 {
@@ -67,8 +67,6 @@ Return your findings in JSON format:
 
 Requirements:
 - Multi-word proper nouns: Only include names with 2+ words (e.g., "New York", "John Smith", "Apple Inc.")
-- Meaningful phrases: Only include expressions with idiomatic meanings
-- Exclude single words and simple word combinations without special meanings
 - Annotations must be in ${targetLanguageName} and extremely concise (≤10 words/characters)
 - Return valid JSON only`;
 
@@ -109,7 +107,7 @@ Return your findings in JSON format:
       "word": "exact word from text (preserve original case)",
       "lemma": "base form of the word",
       "pos": "part-of-speech tag from the valid list above",
-      "annotation": "only explanation in ${targetLanguageName} (≤10 words/characters),no other things here"
+      "annotation": "only explanation in ${targetLanguageName} (≤10 words/characters),no POS here"
     }
   ]
 }
@@ -117,7 +115,6 @@ Return your findings in JSON format:
 Requirements:
 - Words must be in EXACT ORDER of appearance
 - Include ALL words except punctuation marks
-- POS tags must be from the valid list: NOUN, VERB, ADJ, ADV, PRON, DET, ADP, NUM, CONJ, PRT, PUNCT, X, PROPN, AUX, CCONJ, SCONJ, INTJ, SYM
 - Annotations must be in ${targetLanguageName} and extremely concise (≤10 words/characters)
 - Return valid JSON only
 - DO NOT hallucinate or add extra words not in the original text`;

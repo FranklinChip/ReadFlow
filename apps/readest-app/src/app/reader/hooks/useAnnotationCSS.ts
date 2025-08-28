@@ -27,7 +27,7 @@ export function useAnnotationCSS(bookKey: string) {
     if (!wordAnnotationEnabled) {
       // 当注释功能关闭时，隐藏所有annotation-target元素
       return `
-        [annotation-target] {
+        .annotation-target {
           display: none !important;
         }
       `;
