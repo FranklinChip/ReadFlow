@@ -1,5 +1,5 @@
 import { FC, useState } from 'react';
-import { MdDelete } from 'react-icons/md';
+import { MdDelete, MdAdd } from 'react-icons/md';
 
 interface PersonalWord {
   word: string;
@@ -11,6 +11,7 @@ interface PersonalVocabularySectionProps {
   personalWords: PersonalWord[];
   onClearAll: () => void;
   onDeleteWord: (word: string) => void;
+  onAddWords: (words: string[], type: 'word' | 'phrase') => void;
   loading: boolean;
 }
 
@@ -18,15 +19,44 @@ const PersonalVocabularySection: FC<PersonalVocabularySectionProps> = ({
   personalWords,
   onClearAll,
   onDeleteWord,
+  onAddWords,
   loading,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'word' | 'addedAt' | 'type'>('addedAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [activeTab, setActiveTab] = useState<'words' | 'phrases'>('words');
+  const [showAddInput, setShowAddInput] = useState(false);
+  const [addInputValue, setAddInputValue] = useState('');
 
   const words = personalWords.filter(item => item.type === 'word');
   const phrases = personalWords.filter(item => item.type === 'phrase');
+
+  const handleAddItems = () => {
+    if (!addInputValue.trim()) return;
+    
+    // Split by comma and clean up each item
+    const items = addInputValue
+      .split(',')
+      .map(item => item.trim())
+      .filter(item => item.length > 0);
+    
+    if (items.length > 0) {
+      const type = activeTab === 'words' ? 'word' : 'phrase';
+      onAddWords(items, type);
+      setAddInputValue('');
+      setShowAddInput(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleAddItems();
+    } else if (e.key === 'Escape') {
+      setShowAddInput(false);
+      setAddInputValue('');
+    }
+  };
 
   const filteredAndSortedItems = (items: PersonalWord[]) => {
     const filtered = items.filter(item =>
@@ -124,7 +154,57 @@ const PersonalVocabularySection: FC<PersonalVocabularySectionProps> = ({
             </div>
           </div>
 
-          <div className="flex justify-end mb-4">
+          {/* Add items input */}
+          {showAddInput && (
+            <div className="mb-4 p-4 bg-base-200 rounded-lg border border-base-300">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  placeholder={`Add ${activeTab === 'words' ? 'words' : 'phrases'} (separate multiple items with commas)`}
+                  className="input input-bordered flex-1"
+                  value={addInputValue}
+                  onChange={(e) => setAddInputValue(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={handleAddItems}
+                    disabled={!addInputValue.trim() || loading}
+                  >
+                    {loading && (
+                      <span className="loading loading-spinner loading-xs"></span>
+                    )}
+                    Add
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => {
+                      setShowAddInput(false);
+                      setAddInputValue('');
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+              <div className="text-xs text-base-content/60 mt-2">
+                Press Enter to add, Escape to cancel
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-between items-center mb-4">
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => setShowAddInput(true)}
+              disabled={loading || showAddInput}
+            >
+              <MdAdd size={16} />
+              Add {activeTab === 'words' ? 'Words' : 'Phrases'}
+            </button>
+            
             <button
               className="btn btn-error btn-sm"
               onClick={onClearAll}

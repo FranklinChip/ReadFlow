@@ -401,40 +401,45 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
   const handleVocabulary = () => {
     if (!selection || !selection.text) return;
     
-    // Check if the selection is inside a ruby tag
     const range = selection.range;
     if (!range) return;
     
-    let rubyElement = null;
     let lemma = null;
     let wordType: 'word' | 'phrase' = 'word';
     
-    // Find the ruby element containing the selection
+    // Find the annotation element containing the selection
     let currentElement: Node | null = range.startContainer;
-    while (currentElement && currentElement.nodeType !== Node.ELEMENT_NODE) {
-      currentElement = currentElement.parentNode;
+    
+    // For text nodes, start from the parent element
+    if (currentElement && currentElement.nodeType === Node.TEXT_NODE) {
+      currentElement = currentElement.parentElement;
     }
     
-    // Traverse up to find ruby element
-    while (currentElement && currentElement.nodeName !== 'RUBY') {
-      currentElement = currentElement.parentNode;
-      if (currentElement === document.body) break;
-    }
-    
-    if (currentElement && currentElement.nodeName === 'RUBY') {
-      rubyElement = currentElement as HTMLElement;
+    // Traverse up to find annotation element (ruby for words, span for phrases/proper nouns)
+    while (currentElement && currentElement !== document.body) {
+      const element = currentElement as HTMLElement;
       
-      // 直接从 ruby 标签获取 lemma 属性
-      lemma = rubyElement.getAttribute('lemma');
-      
-      if (rubyElement.classList.contains('word')) {
+      // Check for ruby word annotations
+      if (element.nodeName === 'RUBY' && element.classList.contains('annotation-node') && 
+          element.classList.contains('word')) {
+        lemma = element.getAttribute('lemma');
         wordType = 'word';
-      } else if (rubyElement.classList.contains('mwe')) {
-        wordType = 'phrase';
+        break;
       }
+      
+      // Check for span phrase/proper noun annotations
+      if (element.nodeName === 'SPAN' && element.classList.contains('annotation-node') &&
+          (element.classList.contains('mwe') || element.classList.contains('PROPN'))) {
+        // For span elements, use the selected text as lemma since they don't have lemma attribute
+        lemma = selection.text.toLowerCase().trim();
+        wordType = element.classList.contains('PROPN') ? 'phrase' : 'phrase'; // Both treated as phrases for vocabulary
+        break;
+      }
+      
+      currentElement = currentElement.parentElement;
     }
     
-    // If not in a ruby tag or no lemma found, don't show vocabulary option
+    // If not in an annotation tag or no lemma found, don't proceed
     if (!lemma) {
       return;
     }
@@ -554,24 +559,37 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
 
   const selectionAnnotated = selection?.annotated;
   
-  // Check if selection is inside a ruby tag with word or mwe class
+  // Check if selection is inside an annotation tag (ruby for words, span for phrases/proper nouns)
   const isInAnnotationTag = () => {
     if (!selection || !selection.range) return false;
     
     let currentElement: Node | null = selection.range.startContainer;
-    while (currentElement && currentElement.nodeType !== Node.ELEMENT_NODE) {
-      currentElement = currentElement.parentNode;
+    
+    // For text nodes, start from the parent element
+    if (currentElement && currentElement.nodeType === Node.TEXT_NODE) {
+      currentElement = currentElement.parentElement;
     }
     
-    while (currentElement && currentElement.nodeName !== 'RUBY') {
-      currentElement = currentElement.parentNode;
-      if (currentElement === document.body) return false;
+    // Search up the DOM tree for annotation tags
+    while (currentElement && currentElement !== document.body) {
+      const element = currentElement as HTMLElement;
+      
+      // Check for ruby word annotations
+      if (element.nodeName === 'RUBY' && element.classList.contains('annotation-node') && 
+          element.classList.contains('word')) {
+        return true;
+      }
+      
+      // Check for span phrase/proper noun annotations
+      if (element.nodeName === 'SPAN' && element.classList.contains('annotation-node') &&
+          (element.classList.contains('mwe') || element.classList.contains('PROPN'))) {
+        return true;
+      }
+      
+      currentElement = currentElement.parentElement;
     }
     
-    return currentElement && 
-           currentElement.nodeName === 'RUBY' && 
-           ((currentElement as HTMLElement).classList.contains('word') ||
-            (currentElement as HTMLElement).classList.contains('mwe'));
+    return false;
   };
   
   const buttons = [

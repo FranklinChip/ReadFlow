@@ -191,6 +191,7 @@ export const DEFAULT_WORD_ANNOTATION_CONFIG: WordAnnotationConfig = {
   phraseAnnotationBaseHighlightColor: '#E6F3FF',
   phraseAnnotationBaseTextColor: '#0066CC',
   phraseWordAnnotationEnabled: true,
+  propnAnnotationEnabled: true,
 };
 
 export const DEFAULT_SCREEN_CONFIG: ScreenConfig = {

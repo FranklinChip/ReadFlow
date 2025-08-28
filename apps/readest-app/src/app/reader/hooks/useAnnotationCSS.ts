@@ -22,6 +22,7 @@ export function useAnnotationCSS(bookKey: string) {
       phraseAnnotationBaseHighlightColor,
       phraseAnnotationBaseTextColor,
       phraseWordAnnotationEnabled,
+      propnAnnotationEnabled,
     } = viewSettings;
 
     if (!wordAnnotationEnabled) {
@@ -133,6 +134,17 @@ export function useAnnotationCSS(bookKey: string) {
       `;
     }
 
+    // 专有名词注释控制
+    if (!propnAnnotationEnabled) {
+      css += `
+        /* 隐藏专有名词注释 */
+        ruby.word[pos="PROPN"] rt.annotation-target,
+        .PROPN span.annotation-target {
+          display: none !important;
+        }
+      `;
+    }
+
     return css;
   }, [
     viewSettings?.wordAnnotationEnabled,
@@ -148,6 +160,7 @@ export function useAnnotationCSS(bookKey: string) {
     viewSettings?.phraseAnnotationBaseHighlightColor,
     viewSettings?.phraseAnnotationBaseTextColor,
     viewSettings?.phraseWordAnnotationEnabled,
+    viewSettings?.propnAnnotationEnabled,
   ]);
 
   return {

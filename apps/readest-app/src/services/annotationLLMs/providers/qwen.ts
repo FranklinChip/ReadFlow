@@ -48,26 +48,29 @@ Find and explain:
 1. **Multi-word proper nouns** (it must be 2+ words): Names of people, places, organizations, brands, etc.
 2. **Meaningful phrases**: Idioms, phrasal verbs, collocations
 
+IMPORTANT: For annotations, provide DIRECT TRANSLATIONS, not categorical descriptions like "人名", "组织名称", "地名", etc.
+
 Return your findings in JSON format:
 {
   "proper_nouns": [
     {
       "phrase": "exact multi-word proper noun from text",
-      "annotation": "explanation in ${targetLanguageName} (≤10 words/characters)"
+      "annotation": "direct translation in ${targetLanguageName} (≤10 words/characters)"
     }
   ],
   "mwes": [
     {
       "phrase": "exact phrase from text",
       "lemma": "base form of the phrase", 
-      "annotation": "explanation in ${targetLanguageName} (≤10 words/characters)"
+      "annotation": "direct translation or meaning in ${targetLanguageName} (≤10 words/characters)"
     }
   ]
 }
 
 Requirements:
 - Multi-word proper nouns: Only include names with 2+ words (e.g., "New York", "John Smith", "Apple Inc.")
-- Annotations must be in ${targetLanguageName} and extremely concise (≤10 words/characters)
+- Annotations must be DIRECT TRANSLATIONS in ${targetLanguageName}, not categorical labels
+- Keep annotations extremely concise (≤10 words/characters)
 - Return valid JSON only`;
 
       userPrompt = `Find multi-word proper nouns (2+ words) and meaningful phrases in this text.
@@ -79,12 +82,18 @@ Look for:
 1. Multi-word proper nouns: Names of people, places, organizations, brands (must be 2+ words)
 2. Meaningful phrases: Idioms, phrasal verbs, collocations with special meanings
 
+CRITICAL: Provide DIRECT TRANSLATIONS for annotations, NOT categorical descriptions.
+- Good: "John Smith" -> "约翰·史密斯" (not "人名")
+- Good: "New York" -> "纽约" (not "地名") 
+- Good: "Apple Inc." -> "苹果公司" (not "公司名称")
+- Good: "break down" -> "分解;故障" (not "短语动词")
+
 Exclude:
 - Single words
 - Simple word combinations without special meanings
 - Regular noun phrases
 
-Return results in the specified JSON format with annotations in ${targetLanguageName}.`;
+Return results in the specified JSON format with DIRECT TRANSLATIONS in ${targetLanguageName}.`;
       
     } else {
       // 单词查询的prompt - 按顺序返回所有单词
@@ -94,7 +103,7 @@ CRITICAL REQUIREMENTS:
 1. ONLY analyze the text provided by the user - DO NOT add any extra words
 2. Return words in the EXACT SAME ORDER as they appear in the text
 3. Include ALL words but exclude punctuation marks
-4. Treat contractions as single words (e.g., "I've", "don't", "we're")
+4. Treat contractions as single words (e.g., "I've", "don't", "we're", "I'd")
 5. Treat hyphenated words as single words (e.g., "forty-five", "well-known")
 6. DO NOT include instructions, examples, or any other text beyond what the user provides
 

@@ -180,6 +180,8 @@ export interface WordAnnotationConfig {
   phraseAnnotationBaseTextColor: string;
   // 新增：词组内单词注释显示控制
   phraseWordAnnotationEnabled: boolean;
+  // 新增：专有名词注释显示控制
+  propnAnnotationEnabled: boolean;
 }
 
 export interface ScreenConfig {

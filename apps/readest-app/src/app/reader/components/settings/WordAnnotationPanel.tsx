@@ -46,6 +46,9 @@ const WordAnnotationPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegi
   const [phraseAnnotationBaseHighlightColor, setPhraseAnnotationBaseHighlightColor] = useState(viewSettings.phraseAnnotationBaseHighlightColor ?? '#e3f2fd');
   const [phraseAnnotationBaseTextColor, setPhraseAnnotationBaseTextColor] = useState(viewSettings.phraseAnnotationBaseTextColor ?? '#000000');
   const [phraseWordAnnotationEnabled, setPhraseWordAnnotationEnabled] = useState(viewSettings.phraseWordAnnotationEnabled ?? true);
+  
+  // 专有名词标注相关状态
+  const [propnAnnotationEnabled, setPropnAnnotationEnabled] = useState(viewSettings.propnAnnotationEnabled ?? true);
 
   const handleReset = () => {
     // 简化重置逻辑，不使用复杂的类型
@@ -118,6 +121,10 @@ const WordAnnotationPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegi
     saveSettingsOptimized('phraseWordAnnotationEnabled', phraseWordAnnotationEnabled);
   }, [phraseWordAnnotationEnabled, saveSettingsOptimized]);
 
+  useEffect(() => {
+    saveSettingsOptimized('propnAnnotationEnabled', propnAnnotationEnabled);
+  }, [propnAnnotationEnabled, saveSettingsOptimized]);
+
   // 选项数据
   const getLanguageOptions = () => {
     const langs = TRANSLATED_LANGS as Record<string, string>;
@@ -177,6 +184,15 @@ const WordAnnotationPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegi
                 className='toggle'
                 checked={phraseAnnotationEnabled}
                 onChange={() => setPhraseAnnotationEnabled(!phraseAnnotationEnabled)}
+              />
+            </div>
+            <div className='config-item'>
+              <span className=''>{_('Show Proper Nouns')}</span>
+              <input
+                type='checkbox'
+                className='toggle'
+                checked={propnAnnotationEnabled}
+                onChange={() => setPropnAnnotationEnabled(!propnAnnotationEnabled)}
               />
             </div>
             

@@ -26,7 +26,8 @@ const VocabularyPage = () => {
     clearPersonalVocabulary,
     getPersonalWords,
     getAllWordlists,
-    removeWord
+    removeWord,
+    addWord
   } = useVocabularyStore();
   
   const personalWords = getPersonalWords();
@@ -148,6 +149,18 @@ const VocabularyPage = () => {
     setWordToDelete(null);
   };
 
+  const handleAddWords = (words: string[], type: 'word' | 'phrase') => {
+    words.forEach(word => {
+      if (word.trim()) {
+        addWord(word.trim(), type);
+      }
+    });
+    eventDispatcher.dispatch('toast', {
+      message: `${words.length} ${type}${words.length > 1 ? 's' : ''} added to vocabulary`,
+      type: 'success',
+    });
+  };
+
   return (
     <div
       ref={pageRef}
@@ -198,6 +211,7 @@ const VocabularyPage = () => {
                 personalWords={personalWords}
                 onClearAll={handleClearPersonalVocabulary}
                 onDeleteWord={handleDeleteWord}
+                onAddWords={handleAddWords}
                 loading={loading}
               />
             )}

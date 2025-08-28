@@ -339,6 +339,8 @@
   "Disable Word Annotation": "禁用词汇标注",
   "Word Annotation Not Available": "词汇标注不可用",
   "Word Annotation": "词汇标注",
+  "Enable Phrase Annotation": "启用短语标注",
+  "Show Proper Nouns": "显示专有名词",
   "Annotation Size": "标注大小",
   "Annotation Opacity": "标注透明度",
   "Annotation Color": "标注颜色",
