@@ -53,7 +53,7 @@ export interface AnnotationResponse {
 export interface AnnotationProvider {
   name: string;
   label: string;
-  annotate: (text: string, targetLanguage?: string) => Promise<AnnotationResponse>;
+  annotate: (text: string, targetLanguage?: string, signal?: AbortSignal) => Promise<AnnotationResponse>;
 }
 
 

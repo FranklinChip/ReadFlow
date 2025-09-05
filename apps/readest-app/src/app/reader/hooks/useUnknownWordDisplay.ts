@@ -24,10 +24,15 @@ export function useUnknownWordDisplay(
           
           // 直接使用 ruby 标签的 lemma 属性
           const elementLemma = element.getAttribute('lemma');
+          const pos = element.getAttribute('pos');
           
           // 检查是否是我们要更新的单词
           if (elementLemma === targetLemma) {
-            if (isKnown) {
+            // 数词(NUM)始终保持已知状态，不受词汇表更新影响
+            if (pos === 'NUM') {
+              element.classList.add('known');
+              element.classList.remove('unknown');
+            } else if (isKnown) {
               element.classList.add('known');
               element.classList.remove('unknown');
             } else {
@@ -98,9 +103,14 @@ export function useUnknownWordDisplay(
       
       // 直接使用 ruby 标签的 lemma 属性
       const lemma = element.getAttribute('lemma');
+      const pos = element.getAttribute('pos');
       
-      // 基于词汇表判断已知/未知
-      if (lemma && hasWord(lemma)) {
+      // 数词(NUM)默认为已知，不需要查词汇表
+      if (pos === 'NUM') {
+        element.classList.add('known');
+        element.classList.remove('unknown');
+      } else if (lemma && hasWord(lemma)) {
+        // 基于词汇表判断已知/未知
         element.classList.add('known');
         element.classList.remove('unknown');
       } else {

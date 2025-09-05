@@ -4,7 +4,7 @@ export const qwenProvider: AnnotationProvider = {
   name: 'qwen',
   label: 'Qwen Flash',
   
-  annotate: async (text: string, targetLanguage?: string): Promise<AnnotationResponse> => {
+  annotate: async (text: string, targetLanguage?: string, signal?: AbortSignal): Promise<AnnotationResponse> => {
     // 获取API key的优先级：用户设置 > 环境变量 > 默认key（开发用）
     const getUserApiKey = () => {
       // 从本地存储获取用户设置的API key
@@ -184,19 +184,6 @@ Return results in the specified JSON format with annotations in ${targetLanguage
     }
 
     try {
-      // 检查运行环境
-      const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
-      const isDev = process.env.NODE_ENV === 'development';
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🌍 Environment check:', {
-          isTauri,
-          isDev,
-          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown',
-          platform: typeof navigator !== 'undefined' ? navigator.platform : 'Unknown'
-        });
-      }
-      
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -210,35 +197,71 @@ Return results in the specified JSON format with annotations in ${targetLanguage
             { role: 'user', content: userPrompt }
           ],
           temperature: 0.1,
+          stream: true, // 启用流式输出，避免浏览器超时
         }),
+        signal, // 添加AbortSignal支持
       });
-
+      
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const data = await response.json();
-
+      // 处理流式响应，收集所有数据块
+      let fullContent = '';
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
       
-      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        throw new Error('Invalid response format from Qwen API');
+      if (!reader) {
+        throw new Error('Unable to read stream response');
       }
 
-      const content = data.choices[0].message.content;
-      const usage = data.usage; // 获取token使用信息
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 Token usage:', usage);
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) {
+            break;
+          }
+          
+          // 检查是否被取消
+          if (signal?.aborted) {
+            reader.cancel();
+            throw new Error('Request was cancelled');
+          }
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            const trimmedLine = line.trim();
+            if (!trimmedLine || !trimmedLine.startsWith('data: ')) {
+              continue;
+            }
+            
+            const dataStr = trimmedLine.slice(6); // 移除 'data: ' 前缀
+            if (dataStr === '[DONE]') {
+              break;
+            }
+            
+            try {
+              const data = JSON.parse(dataStr);
+              if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
+                fullContent += data.choices[0].delta.content;
+              }
+            } catch (parseError) {
+              // 忽略解析错误的数据块
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
       }
-    
-      
+
+      // 使用收集到的完整内容代替原来的 data.choices[0].message.content
+      const content = fullContent;
+      const usage = undefined; // 流式响应通常不包含 usage 信息
       try {
         const result = JSON.parse(content);
-        
-        // 添加解析后的结果日志
-        if (process.env.NODE_ENV === 'development') {
-          console.log('✅ Parsed LLM Result:', JSON.stringify(result, null, 2));
-        }
         
         // 根据查询类型验证响应格式
         if (isPhrasesQuery) {
@@ -280,6 +303,11 @@ Return results in the specified JSON format with annotations in ${targetLanguage
           message: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : 'No stack trace'
         });
+      }
+      
+      // 检查是否是AbortError（请求被取消）
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('请求被取消');
       }
       
       // 检查是否是 CSP 相关错误

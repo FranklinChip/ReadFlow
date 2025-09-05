@@ -25,7 +25,7 @@ export function useWordsAnnotation(
     enabled = true,
     retryAttempts = 3,
     retryDelay = 1000,
-    timeoutMs = 180000 // 默认180秒（3分钟），适应推理模型处理长文本
+    timeoutMs = 1000 // 1秒超时，流式输出几乎不会超时
   } = options;
 
   const { getViewSettings, getViewState, getProgress } = useReaderStore();
@@ -749,7 +749,7 @@ export function useWordsAnnotation(
   }, [extractRubyWordsArray, matchPhraseWithIndexes, hasWord]);
 
   // 带重试机制的单词注释处理（第一步：只获取单词）
-  const annotateWordsWithRetry = useCallback(async (text: string, targetLang: string, attempts = 0): Promise<{ words: WordAnnotation[], usage?: TokenUsage } | null> => {
+  const annotateWordsWithRetry = useCallback(async (text: string, targetLang: string, signal?: AbortSignal, attempts = 0): Promise<{ words: WordAnnotation[], usage?: TokenUsage } | null> => {
     try {
       const annotationProvider = getAnnotationProvider(provider);
       if (!annotationProvider) {
@@ -765,25 +765,12 @@ export function useWordsAnnotation(
         console.log('❤️ Calling LLM for words:', text.substring(0, 50));
       }
       
-      // 动态超时控制：基于文本长度和推理模型特性
-      const baseTimeout = timeoutMs;
-      const textLengthFactor = Math.min(text.length / 1000, 2); // 最多增加2倍
-      const dynamicTimeout = baseTimeout + (baseTimeout * textLengthFactor * 0.5);
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`⏱️ Setting timeout: ${dynamicTimeout}ms (base: ${baseTimeout}ms, text length factor: ${textLengthFactor.toFixed(2)})`);
+      // 检查是否已取消
+      if (signal?.aborted) {
+        throw new Error('Request was cancelled');
       }
       
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error(`LLM请求超时（${Math.round(dynamicTimeout/1000)}秒），推理模型处理时间较长，请稍后重试`));
-        }, dynamicTimeout);
-      });
-      
-      const result = await Promise.race([
-        annotationProvider.annotate(`words:${text}`, targetLang),
-        timeoutPromise
-      ]);
+      const result = await annotationProvider.annotate(`words:${text}`, targetLang, signal);
       
       // 打印 LLM 返回的 JSON 内容
       if (process.env.NODE_ENV === 'development') {
@@ -824,7 +811,7 @@ export function useWordsAnnotation(
           console.log(`🔄 Retrying in ${delay}ms... (attempt ${attempts + 1}/${retryAttempts})`);
         }
         await new Promise(resolve => setTimeout(resolve, delay));
-        return annotateWordsWithRetry(text, targetLang, attempts + 1);
+        return annotateWordsWithRetry(text, targetLang, signal, attempts + 1);
       }
       
       // 最终失败时抛出错误
@@ -833,7 +820,7 @@ export function useWordsAnnotation(
   }, [provider, retryAttempts, retryDelay, timeoutMs]);
 
   // 带重试机制的词组和专有名词注释处理（第二步：获取词组和多词专有名词）
-  const annotatePhrasesAndProperNounsWithRetry = useCallback(async (text: string, targetLang: string, attempts = 0): Promise<{ mwes: MWEAnnotation[], proper_nouns: ProperNounAnnotation[], usage?: TokenUsage } | null> => {
+  const annotatePhrasesAndProperNounsWithRetry = useCallback(async (text: string, targetLang: string, signal?: AbortSignal, attempts = 0): Promise<{ mwes: MWEAnnotation[], proper_nouns: ProperNounAnnotation[], usage?: TokenUsage } | null> => {
     try {
       const annotationProvider = getAnnotationProvider(provider);
       if (!annotationProvider) {
@@ -849,25 +836,12 @@ export function useWordsAnnotation(
         console.log('🏷️ Calling LLM for phrases and proper nouns:', text.substring(0, 50));
       }
       
-      // 动态超时控制：短语处理通常比单词处理更复杂
-      const baseTimeout = timeoutMs;
-      const textLengthFactor = Math.min(text.length / 800, 2.5); // 短语处理对长度更敏感
-      const dynamicTimeout = baseTimeout + (baseTimeout * textLengthFactor * 0.6);
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`⏱️ Setting phrases timeout: ${dynamicTimeout}ms (base: ${baseTimeout}ms)`);
+      // 检查是否已取消
+      if (signal?.aborted) {
+        throw new Error('Request was cancelled');
       }
       
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error(`词组注释请求超时（${Math.round(dynamicTimeout/1000)}秒），推理模型处理复杂文本需要更多时间`));
-        }, dynamicTimeout);
-      });
-      
-      const result = await Promise.race([
-        annotationProvider.annotate(`phrases:${text}`, targetLang),
-        timeoutPromise
-      ]);
+      const result = await annotationProvider.annotate(`phrases:${text}`, targetLang, signal);
       
       // 打印 LLM 返回的 JSON 内容
       if (process.env.NODE_ENV === 'development') {
@@ -898,7 +872,7 @@ export function useWordsAnnotation(
           console.log(`🔄 Retrying phrases in ${delay}ms... (attempt ${attempts + 1}/${retryAttempts})`);
         }
         await new Promise(resolve => setTimeout(resolve, delay));
-        return annotatePhrasesAndProperNounsWithRetry(text, targetLang, attempts + 1);
+        return annotatePhrasesAndProperNounsWithRetry(text, targetLang, signal, attempts + 1);
       }
       
       // 词组失败不影响单词注释，返回空结果而不是抛出错误
@@ -982,9 +956,10 @@ export function useWordsAnnotation(
       if (process.env.NODE_ENV === "development") {
         console.log(`🚀 Requesting annotations for: "${text.substring(0, 50)}..."`);
       }
+      
       const [wordsResult, phrasesResult] = await Promise.all([
-        annotateWordsWithRetry(text, targetLang),
-        annotatePhrasesAndProperNounsWithRetry(text, targetLang)
+        annotateWordsWithRetry(text, targetLang, abortController.signal),
+        annotatePhrasesAndProperNounsWithRetry(text, targetLang, abortController.signal)
       ]);
 
       // 再次检查是否被取消或元素状态改变
@@ -1054,6 +1029,14 @@ export function useWordsAnnotation(
       if (abortController.signal.aborted) {
         if (process.env.NODE_ENV === 'development') {
           console.log('🔄 Annotation cancelled for element:', text.substring(0, 30));
+        }
+        return;
+      }
+      
+      // 检查是否是AbortError
+      if (error instanceof Error && error.name === 'AbortError') {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Annotation aborted for element:', text.substring(0, 30));
         }
         return;
       }
