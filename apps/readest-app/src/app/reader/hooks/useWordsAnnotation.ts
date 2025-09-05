@@ -12,6 +12,7 @@ interface UseWordsAnnotationOptions {
   enabled?: boolean;
   retryAttempts?: number;
   retryDelay?: number;
+  timeoutMs?: number; // 新增：自定义超时时间
 }
 
 export function useWordsAnnotation(
@@ -23,7 +24,8 @@ export function useWordsAnnotation(
     provider = 'qwen', 
     enabled = true,
     retryAttempts = 3,
-    retryDelay = 1000
+    retryDelay = 1000,
+    timeoutMs = 90000 // 默认90秒，适应推理模型
   } = options;
 
   const { getViewSettings, getViewState, getProgress } = useReaderStore();
@@ -40,6 +42,8 @@ export function useWordsAnnotation(
   const annotatedElements = useRef<HTMLElement[]>([]);
   const allTextNodes = useRef<HTMLElement[]>([]);
   const [isAnnotating, setIsAnnotating] = useState(false);
+  // 新增：段落级别的处理状态管理
+  const processingElements = useRef<Map<HTMLElement, AbortController>>(new Map());
   // 移除processingQueue，采用翻译功能的简单并发模式
 
   // 切换注释可见性（这个好像没用）
@@ -97,6 +101,7 @@ export function useWordsAnnotation(
       element.removeAttribute('word-annotation-mark');
     });
 
+    // 清空已注释元素数组
     annotatedElements.current = [];
   }, []);
 
@@ -190,11 +195,19 @@ export function useWordsAnnotation(
     const langClass = targetLang === 'zh-CN' ? 'zh' : targetLang === 'en' ? 'en' : targetLang;
     const posAttr = annotation.pos ? ` pos="${annotation.pos}"` : '';
     
-    // 基于词汇表判断已知/未知状态
-    const isKnown = hasWord(annotation.lemma);
+    // 安全检查：如果lemma字段是undefined/null，使用单词原词作为lemma
+    const safeLemma = annotation.lemma || word.toLowerCase();
+    
+    // 基于词汇表判断已知/未知状态，但数词(NUM)默认为已知
+    let isKnown: boolean;
+    if (annotation.pos === 'NUM') {
+      isKnown = true; // 数词默认已知，不显示注释
+    } else {
+      isKnown = hasWord(safeLemma);
+    }
     const knownClass = isKnown ? 'known' : 'unknown';
     
-    return `<ruby class="annotation-node word ${knownClass}" lemma="${annotation.lemma}"${posAttr} data-word-index="${index}">${word}<rt class="${langClass} annotation-target">${annotation.annotation}</rt></ruby>`;
+    return `<ruby class="annotation-node word ${knownClass}" lemma="${safeLemma}"${posAttr} data-word-index="${index}">${word}<rt class="${langClass} annotation-target">${annotation.annotation}</rt></ruby>`;
   }, [hasWord]);
 
   // 标准化文本函数，处理中英文引号等字符差异
@@ -752,11 +765,19 @@ export function useWordsAnnotation(
         console.log('❤️ Calling LLM for words:', text.substring(0, 50));
       }
       
-      // 添加超时控制
+      // 动态超时控制：基于文本长度和推理模型特性
+      const baseTimeout = timeoutMs;
+      const textLengthFactor = Math.min(text.length / 1000, 2); // 最多增加2倍
+      const dynamicTimeout = baseTimeout + (baseTimeout * textLengthFactor * 0.5);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`⏱️ Setting timeout: ${dynamicTimeout}ms (base: ${baseTimeout}ms, text length factor: ${textLengthFactor.toFixed(2)})`);
+      }
+      
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
-          reject(new Error('LLM请求超时（30秒），请检查网络连接或稍后重试'));
-        }, 30000); // 30秒超时
+          reject(new Error(`LLM请求超时（${Math.round(dynamicTimeout/1000)}秒），推理模型处理时间较长，请稍后重试`));
+        }, dynamicTimeout);
       });
       
       const result = await Promise.race([
@@ -809,7 +830,7 @@ export function useWordsAnnotation(
       // 最终失败时抛出错误
       throw error;
     }
-  }, [provider, retryAttempts, retryDelay]);
+  }, [provider, retryAttempts, retryDelay, timeoutMs]);
 
   // 带重试机制的词组和专有名词注释处理（第二步：获取词组和多词专有名词）
   const annotatePhrasesAndProperNounsWithRetry = useCallback(async (text: string, targetLang: string, attempts = 0): Promise<{ mwes: MWEAnnotation[], proper_nouns: ProperNounAnnotation[], usage?: TokenUsage } | null> => {
@@ -828,11 +849,19 @@ export function useWordsAnnotation(
         console.log('🏷️ Calling LLM for phrases and proper nouns:', text.substring(0, 50));
       }
       
-      // 添加超时控制
+      // 动态超时控制：短语处理通常比单词处理更复杂
+      const baseTimeout = timeoutMs;
+      const textLengthFactor = Math.min(text.length / 800, 2.5); // 短语处理对长度更敏感
+      const dynamicTimeout = baseTimeout + (baseTimeout * textLengthFactor * 0.6);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`⏱️ Setting phrases timeout: ${dynamicTimeout}ms (base: ${baseTimeout}ms)`);
+      }
+      
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
-          reject(new Error('词组注释请求超时（30秒），请检查网络连接或稍后重试'));
-        }, 30000); // 30秒超时
+          reject(new Error(`词组注释请求超时（${Math.round(dynamicTimeout/1000)}秒），推理模型处理复杂文本需要更多时间`));
+        }, dynamicTimeout);
       });
       
       const result = await Promise.race([
@@ -875,11 +904,19 @@ export function useWordsAnnotation(
       // 词组失败不影响单词注释，返回空结果而不是抛出错误
       return { mwes: [], proper_nouns: [] };
     }
-  }, [provider, retryAttempts, retryDelay]);
+  }, [provider, retryAttempts, retryDelay, timeoutMs]);
 
   // 注释单个元素（重构版本：参照translation的translateElement）
   const annotateElement = useCallback(async (el: HTMLElement) => {
     if (!enabledRef.current) return;
+    
+    // 检查是否已在处理中
+    if (processingElements.current.has(el)) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('⚠️ Element already being processed, skipping:', el.textContent?.substring(0, 30));
+      }
+      return;
+    }
     
     // 处理文本内容（类似translation的文本处理）
     const text = el.textContent?.replace(/\n/g, ' ').trim();
@@ -894,8 +931,19 @@ export function useWordsAnnotation(
       return;
     }
 
-    // 设置加载状态
-    setIsAnnotating(true);
+    // 创建AbortController用于取消长时间运行的请求
+    const abortController = new AbortController();
+    processingElements.current.set(el, abortController);
+
+    // 设置加载状态 - 但不阻塞其他元素
+    const currentlyProcessing = processingElements.current.size;
+    if (currentlyProcessing === 1) {
+      setIsAnnotating(true);
+    }
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🚀 Starting annotation (${currentlyProcessing} total processing):`, text.substring(0, 50));
+    }
     
     // 发送注释开始事件
     window.dispatchEvent(new CustomEvent('annotation-start', { detail: { element: el } }));
@@ -925,6 +973,11 @@ export function useWordsAnnotation(
       // 获取目标语言
       const targetLang = viewSettings?.wordAnnotationLanguage || getLocale();
 
+      // 检查是否被取消
+      if (abortController.signal.aborted) {
+        throw new Error('Request was cancelled');
+      }
+
       // 并行调用两个LLM请求（打包处理）
       if (process.env.NODE_ENV === "development") {
         console.log(`🚀 Requesting annotations for: "${text.substring(0, 50)}..."`);
@@ -934,11 +987,9 @@ export function useWordsAnnotation(
         annotatePhrasesAndProperNounsWithRetry(text, targetLang)
       ]);
 
-      // 检查是否还需要处理（防止并发时重复处理）
-      if (!enabledRef.current || isElementAnnotated(el)) {
-        console.log('⚠️ 注释过程中设置已改变或元素已被注释，跳过处理');
-        setIsAnnotating(false);
-        window.dispatchEvent(new CustomEvent('annotation-end', { detail: { element: el } }));
+      // 再次检查是否被取消或元素状态改变
+      if (abortController.signal.aborted || !enabledRef.current || isElementAnnotated(el)) {
+        console.log('⚠️ 注释过程中被取消或元素已被注释，跳过处理');
         return;
       }
 
@@ -950,8 +1001,6 @@ export function useWordsAnnotation(
         if (process.env.NODE_ENV === 'development') {
           console.warn('⚠️ LLM没有返回任何有效的注释内容');
         }
-        setIsAnnotating(false);
-        window.dispatchEvent(new CustomEvent('annotation-end', { detail: { element: el } }));
         return;
       }
 
@@ -976,29 +1025,39 @@ export function useWordsAnnotation(
         totalAnnotations += mweCount + pnCount;
       }
 
-      // 更新DOM（只有在内容发生变化时才更新）
-      if (processedHTML !== text && enabledRef.current) {
-        el.innerHTML = processedHTML;
-        el.setAttribute('word-annotation-mark', '1');
-        el.classList.add('annotation-target'); // 标记为已注释，便于后续检查
-        
-        // 标记为已注释
-        if (!annotatedElements.current.includes(el)) {
-          annotatedElements.current.push(el);
-        }
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`✅ 注释完成: "${text.substring(0, 50)}..." (共${totalAnnotations}个注释)`);
-        }
-      } else {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('⚠️ 处理后的HTML与原文本相同，没有找到可注释的内容');
+      // 最终检查是否仍然有效
+      if (!abortController.signal.aborted && enabledRef.current) {
+        // 更新DOM（只有在内容发生变化时才更新）
+        if (processedHTML !== text) {
+          el.innerHTML = processedHTML;
+          el.setAttribute('word-annotation-mark', '1');
+          el.classList.add('annotation-target'); // 标记为已注释，便于后续检查
+          
+          // 标记为已注释
+          if (!annotatedElements.current.includes(el)) {
+            annotatedElements.current.push(el);
+          }
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`✅ 注释完成: "${text.substring(0, 50)}..." (共${totalAnnotations}个注释)`);
+          }
+        } else {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('⚠️ 处理后的HTML与原文本相同，没有找到可注释的内容');
+          }
         }
       }
       
       // 发送注释结束事件
       window.dispatchEvent(new CustomEvent('annotation-end', { detail: { element: el } }));
     } catch (error) {
+      if (abortController.signal.aborted) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Annotation cancelled for element:', text.substring(0, 30));
+        }
+        return;
+      }
+
       if (process.env.NODE_ENV === 'development') {
         console.error('❌ 注释元素失败:', error);
         console.error('❌ 详细错误信息:', {
@@ -1012,7 +1071,17 @@ export function useWordsAnnotation(
       // 发送注释错误事件
       window.dispatchEvent(new CustomEvent('annotation-error', { detail: { element: el, error } }));
     } finally {
-      setIsAnnotating(false);
+      // 清理处理状态
+      processingElements.current.delete(el);
+      const remainingProcessing = processingElements.current.size;
+      
+      if (remainingProcessing === 0) {
+        setIsAnnotating(false);
+      }
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`📝 Element processing completed. Remaining: ${remainingProcessing}`);
+      }
     }
   }, [enabledRef, isElementAnnotated, annotateWordsWithRetry, annotatePhrasesAndProperNounsWithRetry, 
       createOrderedWordRubyAnnotations, createIndexBasedPhraseAnnotations, 
@@ -1056,6 +1125,55 @@ export function useWordsAnnotation(
     }, 500),
     [annotateElement]
   );
+
+  // 取消所有处理中的注释请求
+  const cancelAllProcessing = useCallback(() => {
+    const elementsToCancel = Array.from(processingElements.current.entries());
+    
+    elementsToCancel.forEach(([el, controller]) => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 Cancelling annotation for element:', el.textContent?.substring(0, 30));
+      }
+      controller.abort();
+    });
+    
+    processingElements.current.clear();
+    setIsAnnotating(false);
+    
+    if (process.env.NODE_ENV === 'development' && elementsToCancel.length > 0) {
+      console.log(`🔄 Cancelled ${elementsToCancel.length} pending annotation requests`);
+    }
+  }, [setIsAnnotating]);
+
+  // 清除所有注释的主函数
+  const clearAnnotations = useCallback(() => {
+    // 首先取消所有正在进行的处理
+    cancelAllProcessing();
+    
+    annotatedElements.current.forEach((element) => {
+      const originalNodes = element.getAttribute('original-text-nodes');
+      if (originalNodes) {
+        try {
+          const textNodes = JSON.parse(originalNodes);
+          element.innerHTML = '';
+          textNodes.forEach((text: string) => {
+            element.appendChild(document.createTextNode(text));
+          });
+        } catch {
+          console.warn('恢复原始文本节点失败，使用简单文本恢复');
+          element.innerHTML = element.textContent || '';
+        }
+        element.removeAttribute('original-text-nodes');
+        element.removeAttribute('original-text-stored');
+      }
+      
+      element.removeAttribute('word-annotation-mark');
+      element.classList.remove('annotation-target');
+    });
+    
+    annotatedElements.current = [];
+    console.log('✅ 已清除所有注释');
+  }, [cancelAllProcessing]);
 
   // 监听TTS进度变化（类似translation的TTS监听）
   useEffect(() => {
@@ -1126,5 +1244,7 @@ export function useWordsAnnotation(
     annotateElement,
     toggleAnnotationVisibility,
     isAnnotating, // 返回真实的加载状态
+    clearAnnotations,
+    cancelAllProcessing,
   };
 }
