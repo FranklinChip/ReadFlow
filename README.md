@@ -2,317 +2,225 @@
   <a href="https://github.com/FranklinChip/ReadFlow-backup" target="_blank">
     <img src="https://github.com/FranklinChip/ReadFlow-backup/blob/main/apps/readest-app/src-tauri/icons/icon.png?raw=true" alt="ReadFlow Logo" width="20%" />
   </a>
-  <h1>ReadFlow</h1>
-  <br>
-
-[ReadFlow][link-website] helps readers enter flow state by intelligently explaining unknown words and phrases in English books clearly and accurately. Built as a modern rewrite of [Foliate](https://github.com/johnfactotum/foliate), it leverages [Next.js 15](https://github.com/vercel/next.js) and [Tauri v2](https://github.com/tauri-apps/tauri) to deliver a smooth, cross-platform experience across macOS, Windows, Linux, Android, iOS, and the Web.
-
-[![Website][badge-website]][link-website]
-[![Web App][badge-web-app]][link-web-readflow]
-[![OS][badge-platforms]][link-website]
-<br>
-[![][badge-hellogithub]][link-hellogithub]
-[![][badge-discord]][link-discord]
-[![AGPL Licence][badge-license]](LICENSE)
-[![Latest release][badge-release]][link-gh-releases]
-[![Donate][badge-donate]][link-donate]
-<br>
-[![Last commit][badge-last-commit]][link-gh-commits]
-[![Commits][badge-commit-activity]][link-gh-pulse]
-
-</div>
-
-<p align="center">
-  <a href="#features">Features</a> •
-  <a href="#planned-features">Planned Features</a> •
-  <a href="#screenshots">Screenshots</a> •
-  <a href="#downloads">Downloads</a> •
-  <a href="#getting-started">Getting Started</a> •
-  <a href="#troubleshooting">Troubleshooting</a> •
-  <a href="#support">Support</a> •
-  <a href="#license">License</a>
-</p>
+  <h1>ReadFlow 📚</h1>
+  <h3>基于 LLM 的智能注释阅读器 / LLM-Powered Smart Annotation Reader</h3>
 
 <div align="center">
-  <a href="https://github.com/FranklinChip/ReadFlow-backup" target="_blank">
-    <img src="./data/screenshots/landing_all_platforms.png" alt="ReadFlow Banner" width="100%" />
+  <a href="#zh">
+    <img src="https://img.shields.io/badge/语言-中文-red?style=for-the-badge" alt="中文" />
+  </a>
+  <a href="#en">
+    <img src="https://img.shields.io/badge/Language-English-blue?style=for-the-badge" alt="English" />
   </a>
 </div>
 
-## Features
+  <br>
 
-<div align="left">✅ Implemented</div>
+<div id="zh">
 
-| **Feature**                             | **Description**                                                                                | **Status** |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------- |
-| **Multi-Format Support**                | Support EPUB, MOBI, KF8 (AZW3), FB2, CBZ, TXT, PDF (experimental)                              | ✅         |
-| **Scroll/Page View Modes**              | Switch between scrolling or paginated reading modes.                                           | ✅         |
-| **Full-Text Search**                    | Search across the entire book to find relevant sections.                                       | ✅         |
-| **Annotations and Highlighting**        | Add highlights, bookmarks, and notes to enhance your reading experience.                       | ✅         |
-| **Excerpt Text for Note-Taking**        | Easily excerpt text from books for detailed notes and analysis.                                | ✅         |
-| **Dictionary/Wikipedia Lookup**         | Instantly look up words and terms when reading.                                                | ✅         |
-| **[Parallel Read][link-parallel-read]** | Read two books or documents simultaneously in a split-screen view.                             | ✅         |
-| **Customize Font and Layout**           | Adjust font, layout, theme mode, and theme colors for a personalized experience.               | ✅         |
-| **File Association and Open With**      | Quickly open files in ReadFlow in your file browser with one-click.                             | ✅         |
-| **Sync across Platforms**               | Synchronize book files, reading progress, notes, and bookmarks across all supported platforms. | ✅         |
-| **Translate with DeepL**                | From a single sentence to the entire book—translate instantly with DeepL.                      | ✅         |
-| **Text-to-Speech (TTS) Support**        | Enjoy smooth, multilingual narration—even within a single book.                                | ✅         |
-| **Library Management**                  | Organize, sort, and manage your entire ebook library.                                          | ✅         |
-| **Code Syntax Highlighting**            | Read software manuals with rich coloring of code examples.                                     | ✅         |
+## 🌟 项目简介
 
-## Planned Features
+✨ **ReadFlow** 基于优秀的开源项目 [Readest](https://github.com/readest/readest) 开发，专注于通过 **LLM 智能注释**帮助读者理解英文书籍中的生词、词组和专有名词。
 
-<div align="left">🛠 Building</div>
-<div align="left">🔄 Planned</div>
-
-| **Feature**                     | **Description**                                                                            | **Priority** |
-| ------------------------------- | ------------------------------------------------------------------------------------------ | ------------ |
-| **Sync with Koreader**          | Synchronize reading progress, notes, and bookmarks with [Koreader][link-koreader] devices. | 🛠           |
-| **AI-Powered Summarization**    | Generate summaries of books or chapters using AI for quick insights.                       | 🛠           |
-| **Keyboard Navigation**         | Implement vimium-style keybindings for book navigation.                                    | 🔄           |
-| **Support OPDS/Calibre**        | Integrate OPDS/Calibre to access online libraries and catalogs.                            | 🔄           |
-| **Audiobook Support**           | Extend functionality to play and manage audiobooks.                                        | 🔄           |
-| **Handwriting Annotations**     | Add support for handwriting annotations using a pen on compatible devices.                 | 🔄           |
-| **Advanced Reading Stats**      | Track reading time, pages read, and more for detailed insights.                            | 🔄           |
-| **In-Library Full-Text Search** | Search across your entire ebook library to find topics and quotes.                         | 🔄           |
-
-Stay tuned for continuous improvements and updates! Contributions and suggestions are always welcome—let's build the ultimate reading experience together. 😊
-
-## Screenshots
-
-![Annotations](./data/screenshots/annotations.png)
-
-![TTS](./data/screenshots/tts_speak_aloud.png)
-
-![DeepL](./data/screenshots/deepl.png)
-
-![Footnote](./data/screenshots/footnote_popover.png)
-
-![Wikipedia](./data/screenshots/wikipedia_vertical.png)
-
-![Theming Dark Mode](./data/screenshots/theming_dark_mode.png)
-
----
-
-## Downloads
-
-### Mobile Apps
-
-<div align="center">
-  <a href="https://apps.apple.com/app/id6738622779">
-    <img alt="Download on the App Store" src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" style="height: 50px;" /></a>&nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="https://play.google.com/store/apps/details?id=com.bilingify.readest">
-    <img alt="Get it on Google Play" src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" style="height: 50px;" /></a>
 </div>
 
-### Platform-Specific Downloads
+<div id="en">
 
-- macOS / iOS / iPadOS : Search for "Readest" on the [App Store][link-appstore], also available on TestFlight for beta test (send your Apple ID to <readestapp@gmail.com> to request access).
-- Windows / Linux / Android: Visit [https://readest.com][link-website] or the [Releases on GitHub][link-gh-releases].
-- Web: Visit [https://web.readest.com][link-web-readest].
+## 🌟 Project Introduction
 
-## Requirements
+✨ **ReadFlow** is built upon the excellent open-source project [Readest](https://github.com/readest/readest), focusing on helping readers understand unfamiliar words, phrases, and proper nouns in English books through **LLM-powered intelligent annotations**.
 
-- **Node.js** and **pnpm** for Next.js development
-- **Rust** and **Cargo** for Tauri development
+</div>
 
-For the best experience to build Readest for yourself, use a recent version of Node.js and Rust. Refer to the [Tauri documentation](https://v2.tauri.app/start/prerequisites/) for details on setting up the development environment prerequisites on different platforms.
+<div align="center">
+  
+🔥 **核心特性 Core Features** 🔥
 
-```bash
-nvm install v22
-nvm use v22
-npm install -g pnpm
-rustup update
-```
+<div id="zh">
 
-## Getting Started
+| 🎯 **智能注释** | 🌐 **多语言支持** | ⚡ **实时处理** |
+|:---:|:---:|:---:|
+| LLM驱动的词汇/词组/专有名词注释 | 目前支持中文注释英文，更多语言即将支持 | 基于段落的并发处理，避免阻塞 |
 
-To get started with ReadFlow, follow these steps to clone and build the project.
+</div>
 
-### 1. Clone the Repository
+<div id="en">
 
-```bash
-git clone https://github.com/FranklinChip/ReadFlow-backup.git
-cd ReadFlow-backup/readest
-git submodule update --init --recursive
-```
+| 🎯 **Smart Annotations** | 🌐 **Multi-language Support** | ⚡ **Real-time Processing** |
+|:---:|:---:|:---:|
+| LLM-driven vocabulary/phrase/proper noun annotation | Currently Chinese→English, more languages coming | Paragraph-based concurrent processing |
 
-### 2. Install Dependencies
+</div>
 
-```bash
-# might need to rerun this when code is updated
-pnpm install
-# copy pdfjs-dist to Next.js public directory
-pnpm --filter @readest/readest-app setup-pdfjs
-```
+</div>
 
-### 3. Verify Dependencies Installation
+[![AGPL Licence](https://img.shields.io/github/license/FranklinChip/ReadFlow-backup?color=teal)](LICENSE)
+[![Latest release](https://img.shields.io/github/release/FranklinChip/ReadFlow-backup?color=green)](https://github.com/FranklinChip/ReadFlow-backup/releases)
+[![Last commit](https://img.shields.io/github/last-commit/FranklinChip/ReadFlow-backup?color=green)](https://github.com/FranklinChip/ReadFlow-backup/commits/main)
 
-To confirm that all dependencies are correctly installed, run the following command:
+</div>
 
-```bash
-pnpm tauri info
-```
+## 🚀 核心功能 Core Features
 
-This command will display information about the installed Tauri dependencies and configuration on your platform. Note that the output may vary depending on the operating system and environment setup. Please review the output specific to your platform for any potential issues.
+<div align="center">
+  <a href="https://github.com/FranklinChip/ReadFlow-backup" target="_blank">
+    <img src="./data/screenshots/annotations.png" alt="LLM智能注释演示" width="100%" />
+  </a>
+</div>
 
-For Windows targets, “Build Tools for Visual Studio 2022” (or a higher edition of Visual Studio) and the “Desktop development with C++” workflow must be installed. For Windows ARM64 targets, the “VS 2022 C++ ARM64 build tools” and "C++ Clang Compiler for Windows" components must be installed. And make sure `clang` can be found in the path by adding `C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\Llvm\x64\bin` for example in the environment variable `Path`.
+<div id="zh">
 
-### 4. Build for Development
+### 🎯 LLM 智能注释
 
-```bash
-# Start development for the Tauri app
-pnpm tauri dev
-# or start development for the Web app
-pnpm dev-web
-```
+- ✅ **词汇注释**：自动识别并注释生词，提供准确的中文释义
+- ✅ **词组识别**：智能识别英语词组和搭配，完全由LLM决策
+- ✅ **专有名词**：准确注释人名、地名、机构名等专有名词
+- ✅ **中译英支持**：目前完美支持中文注释英文书籍
+- 🔄 **策略优化**：未来将通过prompt engineering提供多种注释策略
+- 🔄 **多语言扩展**：正在适配更多语言对的注释支持
 
-For Android:
+### 📚 阅读体验
 
-```bash
-# Initialize the Android environment (run once)
-pnpm tauri android init
+| **功能** | **描述** |
+|:---|:---|
+| **多格式支持** | EPUB, MOBI, KF8 (AZW3), FB2, CBZ, TXT, PDF |
+| **智能高亮** | 自动高亮注释词汇，支持自定义样式 |
+| **个人词库** | 记录学习进度，未来将大幅优化 |
+| **快速注释** | 段落并发处理，注释速度持续优化中 |
 
-pnpm tauri android dev
-# or if you want to dev on a real device
-pnpm tauri android dev --host
-```
+### 🔮 发展规划
 
-For iOS:
+| **计划** | **状态** | **说明** |
+|:---|:---:|:---|
+| **多语言注释** | 🔄 开发中 | 扩展到更多语言对的注释支持 |
+| **注释策略** | 🔄 设计中 | 通过prompt engineering提供多种注释策略 |
+| **个人词库优化** | 📋 计划中 | 全面优化个人学习词库功能 |
+| **注释速度优化** | 🔄 持续中 | 不断优化LLM推理和注释展示速度 |
+| **移除翻译功能** | ⚠️ 待定 | 专注注释功能，移除全文翻译（避免与原作者付费功能冲突） |
 
-```bash
-# Set up the iOS environment (run once)
-pnpm tauri ios init
+</div>
 
-pnpm tauri ios dev
-# or if you want to dev on a real device
-pnpm tauri ios dev --host
-```
+<div id="en">
 
-### 5. Build for Production
+### 🎯 LLM Smart Annotations
 
-```bash
-pnpm tauri build
-pnpm tauri android build
-pnpm tauri ios build
-```
+- ✅ **Vocabulary Annotation**: Automatically identify and annotate unfamiliar words with accurate Chinese interpretations
+- ✅ **Phrase Recognition**: Intelligently identify English phrases and collocations, fully driven by LLM decisions
+- ✅ **Proper Nouns**: Accurately annotate names, places, institutions, and other proper nouns
+- ✅ **Chinese-English Support**: Perfect support for Chinese annotations of English books
+- 🔄 **Strategy Optimization**: Multiple annotation strategies through prompt engineering (coming soon)
+- 🔄 **Multi-language Expansion**: Adapting support for more language pairs (coming soon)
 
-### 6. Setup dev environment with Nix
+### 📚 Reading Experience
 
-If you have Nix installed, you can leverage flake to enter a development shell
-with all the necessary dependencies:
+| **Feature** | **Description** |
+|:---|:---|
+| **Multi-format Support** | EPUB, MOBI, KF8 (AZW3), FB2, CBZ, TXT, PDF |
+| **Smart Highlighting** | Auto-highlight annotated words with customizable styles |
+| **Personal Vocabulary** | Track learning progress, major optimizations coming |
+| **Fast Annotation** | Paragraph-based concurrent processing, speed continuously optimized |
 
-```bash
-nix develop ./ops  # enter a dev shell for the web app
-nix develop ./ops#ios # enter a dev shell for the ios app
-nix develop ./ops#android # enter a dev shell for the android app
-```
+### 🔮 Development Roadmap
 
-### 7. More information
+| **Plan** | **Status** | **Description** |
+|:---|:---:|:---|
+| **Multi-language Annotation** | 🔄 In Progress | Expand support for more language pairs |
+| **Annotation Strategies** | 🔄 Designing | Multiple annotation strategies through prompt engineering |
+| **Vocabulary Optimization** | 📋 Planned | Comprehensive optimization of personal vocabulary features |
+| **Speed Optimization** | 🔄 Ongoing | Continuously optimize LLM inference and annotation display speed |
+| **Remove Translation Feature** | ⚠️ Pending | Focus on annotations, remove full-text translation (avoid conflict with original author's paid features) |
 
-Please check the [wiki][link-gh-wiki] of this project for more information on development.
-
-## Troubleshooting
-
-### 1. Readest Won’t Launch on Windows (Missing Edge WebView2 Runtime)
-
-**Symptom**
-
-- When you double-click readest.exe, nothing happens. No window appears, and Task Manager does not show the process.
-- This can affect both the standard installer and the portable version.
-
-**Cause**
-
-- Microsoft Edge WebView2 Runtime is either missing, outdated, or improperly installed on your system. Readest depends on WebView2 to render the interface on Windows.
-
-**How to Fix**
-
-1. Check if WebView2 is installed
-   - Open “Add or Remove Programs” (a.k.a. Apps & features) on Windows. Look for “Microsoft Edge WebView2 Runtime.”
-2. Install or Update WebView2
-   - Download the WebView2 Runtime directly from Microsoft: [link](https://developer.microsoft.com/en-us/microsoft-edge/webview2?form=MA13LH).
-   - If you prefer an offline installer, download the offline package and run it as an Administrator.
-3. Re-run Readest
-   - After installing/updating WebView2, launch readest.exe again.
-   - If you still encounter problems, reboot your PC and try again.
-
-**Additional Tips**
-
-- If reinstalling once doesn’t work, uninstall Edge WebView2 completely, then reinstall it with Administrator privileges.
-- Verify your Windows installation has the latest updates from Microsoft.
-
-**Still Stuck?**
-
-- See Issue [readest/readest#358](https://github.com/readest/readest/issues/358) for further details, or head over to our [Discord][link-discord] server and open a support discussion with detailed logs of your environment and the steps you’ve taken.
-
-## Contributors
-
-ReadFlow is open-source, and contributions are welcome! Feel free to open issues, suggest features, or submit pull requests. Please **review our [contributing guidelines](CONTRIBUTING.md) before you start**. We also welcome you to join our [Discord][link-discord] community for either support or contributing guidance.
-
-<a href="https://github.com/readest/readest/graphs/contributors">
-  <p align="left">
-    <img width="500" src="https://contrib.rocks/image?repo=readest/readest" alt="A table of avatars from the project's contributors" />
-  </p>
-</a>
-
-## Support
-
-If ReadFlow has been useful to you, consider supporting its development. Your contribution helps us squash bugs faster, improve performance, and keep building great features.
-
-### How to Donate
-
-1. **GitHub Sponsors**  
-   Back the project directly on GitHub:  
-   👉 [https://github.com/sponsors/readest](https://github.com/sponsors/readest)
-
-2. **Crypto Donations**  
-   Prefer crypto? You can donate here:  
-   👉 [https://donate.readest.com/](https://donate.readest.com/)
-
-## License
-
-ReadFlow is free software: you can redistribute it and/or modify it under the terms of the [GNU Affero General Public License](https://www.gnu.org/licenses/agpl-3.0.html) as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. See the [LICENSE](LICENSE) file for details.
-
-The following libraries and frameworks are used in this software:
-
-- [foliate-js](https://github.com/johnfactotum/foliate-js), which is MIT licensed.
-- [zip.js](https://github.com/gildas-lormeau/zip.js), which is licensed under the BSD-3-Clause license.
-- [fflate](https://github.com/101arrowz/fflate), which is MIT licensed.
-- [PDF.js](https://github.com/mozilla/pdf.js), which is licensed under Apache License 2.0.
-- [daisyUI](https://github.com/saadeghi/daisyui), which is MIT licensed.
-- [marked](https://github.com/markedjs/marked), which is MIT licensed.
-- [next.js](https://github.com/vercel/next.js), which is MIT licensed.
-- [react-icons](https://github.com/react-icons/react-icons), which has various open-source licenses.
-- [react](https://github.com/facebook/react), which is MIT licensed.
-- [tauri](https://github.com/tauri-apps/tauri), which is MIT licensed.
-
-The following fonts are utilized in this software, either bundled within the application or provided through web fonts:
-
-[Bitter](https://fonts.google.com/?query=Bitter), [Fira Code](https://fonts.google.com/?query=Fira+Code), [Literata](https://fonts.google.com/?query=Literata), [Merriweather](https://fonts.google.com/?query=Merriweather), [Noto Sans](https://fonts.google.com/?query=Noto+Sans), [Roboto](https://fonts.google.com/?query=Roboto), [LXGW WenKai](https://github.com/lxgw/LxgwWenKai), [MiSans](https://hyperos.mi.com/font/en/), [Source Han](https://github.com/adobe-fonts/source-han-sans/), [WenQuanYi Micro Hei](http://wenq.org/wqy2/)
+</div>
 
 ---
 
-<div align="center" style="color: gray;">Happy reading with ReadFlow!</div>
+## � 关注我们 Follow Us
 
-[badge-website]: https://img.shields.io/badge/website-github.com%2FFranklinChip%2FReadFlow--backup-orange
-[badge-web-app]: https://img.shields.io/badge/read%20online-web.readflow.app-orange
-[badge-license]: https://img.shields.io/github/license/FranklinChip/ReadFlow-backup?color=teal
-[badge-release]: https://img.shields.io/github/release/FranklinChip/ReadFlow-backup?color=green
-[badge-platforms]: https://img.shields.io/badge/platforms-macOS%2C%20Windows%2C%20Linux%2C%20Android%2C%20iOS%2C%20Web%2C%20PWA-green
-[badge-last-commit]: https://img.shields.io/github/last-commit/FranklinChip/ReadFlow-backup?color=green
-[badge-commit-activity]: https://img.shields.io/github/commit-activity/m/FranklinChip/ReadFlow-backup
-[badge-discord]: https://img.shields.io/discord/1314226120886976544?color=5865F2&label=discord&labelColor=black&logo=discord&logoColor=white&style=flat-square
-[badge-hellogithub]: https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=8a5b6ade2aee461a8bd94e59200682a7&claim_uid=eRLUbPOy2qZtDgw&theme=small
-[badge-donate]: https://donate.readflow.app/badge.svg
-[link-donate]: https://donate.readflow.app/?tickers=btc%2Ceth%2Csol%2Cusdc
-[link-appstore]: https://apps.apple.com/app/apple-store/id6738622779?pt=127463130&ct=github&mt=8
-[link-website]: https://github.com/FranklinChip/ReadFlow-backup
-[link-web-readflow]: https://web.readflow.app
-[link-gh-releases]: https://github.com/FranklinChip/ReadFlow-backup/releases
-[link-gh-commits]: https://github.com/FranklinChip/ReadFlow-backup/commits/main
-[link-gh-pulse]: https://github.com/FranklinChip/ReadFlow-backup/pulse
-[link-gh-wiki]: https://github.com/FranklinChip/ReadFlow-backup/wiki
-[link-discord]: https://discord.gg/gntyVNk3BJ
-[link-parallel-read]: https://github.com/FranklinChip/ReadFlow-backup#parallel-read
-[link-koreader]: https://github.com/koreader/koreader
-[link-hellogithub]: https://hellogithub.com/repository/8a5b6ade2aee461a8bd94e59200682a7
+<div align="center">
+
+<div id="zh">
+
+### 持续更新，敬请关注！
+
+</div>
+
+<div id="en">
+
+### Stay Updated!
+
+</div>
+
+<table>
+<tr>
+<td align="center">
+<img width="60" src="https://img.icons8.com/color/96/xiaohongshu.png" alt="小红书"/>
+<br>
+<strong>小红书</strong>
+<br>
+<code>486389016</code>
+</td>
+<td align="center">
+<img width="60" src="https://img.icons8.com/color/96/tiktok.png" alt="抖音"/>
+<br>
+<strong>抖音</strong>
+<br>
+<code>21429984344</code>
+</td>
+</tr>
+</table>
+
+<div id="zh">
+
+📺 **关注获取最新功能更新、使用技巧和开发进度**
+
+</div>
+
+<div id="en">
+
+📺 **Follow for latest updates, usage tips, and development progress**
+
+</div>
+
+</div>
+
+---
+
+## ⚖️ 开源协议 License
+
+<div id="zh">
+
+ReadFlow 基于 [GNU Affero General Public License v3.0](LICENSE) 开源协议发布。
+
+### 致谢
+
+特别感谢 [Readest](https://github.com/readest/readest) 项目为我们提供了优秀的基础框架。
+
+</div>
+
+<div id="en">
+
+ReadFlow is released under the [GNU Affero General Public License v3.0](LICENSE).
+
+### Acknowledgments
+
+Special thanks to the [Readest](https://github.com/readest/readest) project for providing an excellent foundation.
+
+</div>
+
+---
+
+<div align="center" style="color: gray;">
+
+<div id="zh">
+  
+✨ **用 ReadFlow 开启智能阅读新体验** ✨
+
+</div>
+
+<div id="en">
+
+✨ **Start Your Smart Reading Journey with ReadFlow** ✨
+
+</div>
+
+</div>
