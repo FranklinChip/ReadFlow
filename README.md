@@ -31,31 +31,31 @@
 ## 🚀 Core Features
 
 <div align="center">
-  <table>
-    <tr>
-      <td align="center" width="33%">
-        <a href="https://github.com/FranklinChip/ReadFlow-backup" target="_blank">
-          <img src="./data/screenshots/注释设置1.png" alt="Annotation Settings 1" width="100%" />
-        </a>
-        <br>
-        <strong>📝 Smart Annotation Settings</strong>
-      </td>
-      <td align="center" width="33%">
-        <a href="https://github.com/FranklinChip/ReadFlow-backup" target="_blank">
-          <img src="./data/screenshots/注释设置2.png" alt="Annotation Settings 2" width="100%" />
-        </a>
-        <br>
-        <strong>⚙️ Advanced Configuration</strong>
-      </td>
-      <td align="center" width="33%">
-        <a href="https://github.com/FranklinChip/ReadFlow-backup" target="_blank">
-          <img src="./data/screenshots/注释后效果.png" alt="Annotation Result" width="100%" />
-        </a>
-        <br>
-        <strong>✨ Annotation in Action</strong>
-      </td>
-    </tr>
-  </table>
+  
+  <div style="margin-bottom: 30px;">
+    <a href="https://github.com/FranklinChip/ReadFlow-backup" target="_blank">
+      <img src="./data/screenshots/注释设置1.png" alt="Annotation Settings 1" width="80%" />
+    </a>
+    <br>
+    <strong>📝 Smart Annotation Settings</strong>
+  </div>
+
+  <div style="margin-bottom: 30px;">
+    <a href="https://github.com/FranklinChip/ReadFlow-backup" target="_blank">
+      <img src="./data/screenshots/注释设置2.png" alt="Annotation Settings 2" width="80%" />
+    </a>
+    <br>
+    <strong>⚙️ Advanced Configuration</strong>
+  </div>
+
+  <div style="margin-bottom: 30px;">
+    <a href="https://github.com/FranklinChip/ReadFlow-backup" target="_blank">
+      <img src="./data/screenshots/注释后效果.png" alt="Annotation Result" width="80%" />
+    </a>
+    <br>
+    <strong>✨ Annotation in Action</strong>
+  </div>
+
 </div>
 
 ### 🎯 LLM Smart Annotations

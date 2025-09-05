@@ -31,31 +31,31 @@
 ## 🚀 核心功能
 
 <div align="center">
-  <table>
-    <tr>
-      <td align="center" width="33%">
-        <a href="https://github.com/FranklinChip/ReadFlow-backup" target="_blank">
-          <img src="./data/screenshots/注释设置1.png" alt="注释设置界面1" width="100%" />
-        </a>
-        <br>
-        <strong>📝 智能注释设置</strong>
-      </td>
-      <td align="center" width="33%">
-        <a href="https://github.com/FranklinChip/ReadFlow-backup" target="_blank">
-          <img src="./data/screenshots/注释设置2.png" alt="注释设置界面2" width="100%" />
-        </a>
-        <br>
-        <strong>⚙️ 高级配置选项</strong>
-      </td>
-      <td align="center" width="33%">
-        <a href="https://github.com/FranklinChip/ReadFlow-backup" target="_blank">
-          <img src="./data/screenshots/注释后效果.png" alt="注释效果展示" width="100%" />
-        </a>
-        <br>
-        <strong>✨ 注释效果实况</strong>
-      </td>
-    </tr>
-  </table>
+  
+  <div style="margin-bottom: 30px;">
+    <a href="https://github.com/FranklinChip/ReadFlow-backup" target="_blank">
+      <img src="./data/screenshots/注释设置1.png" alt="注释设置界面1" width="80%" />
+    </a>
+    <br>
+    <strong>📝 智能注释设置</strong>
+  </div>
+
+  <div style="margin-bottom: 30px;">
+    <a href="https://github.com/FranklinChip/ReadFlow-backup" target="_blank">
+      <img src="./data/screenshots/注释设置2.png" alt="注释设置界面2" width="80%" />
+    </a>
+    <br>
+    <strong>⚙️ 高级配置选项</strong>
+  </div>
+
+  <div style="margin-bottom: 30px;">
+    <a href="https://github.com/FranklinChip/ReadFlow-backup" target="_blank">
+      <img src="./data/screenshots/注释后效果.png" alt="注释效果展示" width="80%" />
+    </a>
+    <br>
+    <strong>✨ 注释效果实况</strong>
+  </div>
+
 </div>
 
 ### 🎯 LLM 智能注释
