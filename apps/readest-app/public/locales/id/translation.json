@@ -444,5 +444,17 @@
   "Keep manual input": "Pertahankan input manual",
   "Google Books": "Google Books",
   "Open Library": "Open Library",
-  "Fiction, Science, History": "Fiksi, Sains, Sejarah"
+  "Fiction, Science, History": "Fiksi, Sains, Sejarah",
+  "Above": "Atas",
+  "Below": "Bawah",
+  "Basic Settings": "Pengaturan Dasar",
+  "Word Settings": "Pengaturan Kata",
+  "Phrase Settings": "Pengaturan Frasa",
+  "Word Base Style": "Gaya Dasar Kata",
+  "Word Base Highlight Color": "Warna Sorotan Kata",
+  "Word Base Text Color": "Warna Teks Kata",
+  "Show Word Annotations in Phrases": "Tampilkan Anotasi Kata dalam Frasa",
+  "Phrase Base Style": "Gaya Dasar Frasa",
+  "Phrase Base Highlight Color": "Warna Sorotan Frasa",
+  "Phrase Base Text Color": "Warna Teks Frasa"
 }

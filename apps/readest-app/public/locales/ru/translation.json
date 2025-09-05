@@ -456,5 +456,17 @@
   "Keep manual input": "Сохранить ручной ввод",
   "Google Books": "Google Книги",
   "Open Library": "Open Library",
-  "Fiction, Science, History": "Художественная литература, Наука, История"
+  "Fiction, Science, History": "Художественная литература, Наука, История",
+  "Above": "Выше",
+  "Below": "Ниже",
+  "Basic Settings": "Основные настройки",
+  "Word Settings": "Настройки слов",
+  "Phrase Settings": "Настройки фраз",
+  "Word Base Style": "Базовый стиль слова",
+  "Word Base Highlight Color": "Цвет выделения слова",
+  "Word Base Text Color": "Цвет текста слова",
+  "Show Word Annotations in Phrases": "Показать аннотации слов во фразах",
+  "Phrase Base Style": "Базовый стиль фразы",
+  "Phrase Base Highlight Color": "Цвет выделения фразы",
+  "Phrase Base Text Color": "Цвет текста фразы"
 }

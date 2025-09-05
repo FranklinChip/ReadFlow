@@ -448,5 +448,17 @@
   "Keep manual input": "Διατήρηση χειροκίνητης εισαγωγής",
   "Google Books": "Google Books",
   "Open Library": "Open Library",
-  "Fiction, Science, History": "Μυθοπλασία, Επιστήμη, Ιστορία"
+  "Fiction, Science, History": "Μυθοπλασία, Επιστήμη, Ιστορία",
+  "Above": "Πάνω",
+  "Below": "Κάτω",
+  "Basic Settings": "Βασικές ρυθμίσεις",
+  "Word Settings": "Ρυθμίσεις λέξεων",
+  "Phrase Settings": "Ρυθμίσεις φράσεων",
+  "Word Base Style": "Βασικό στυλ λέξης",
+  "Word Base Highlight Color": "Χρώμα επισήμανσης λέξης",
+  "Word Base Text Color": "Χρώμα κειμένου λέξης",
+  "Show Word Annotations in Phrases": "Εμφάνιση σχολίων λέξεων στις φράσεις",
+  "Phrase Base Style": "Βασικό στυλ φράσης",
+  "Phrase Base Highlight Color": "Χρώμα επισήμανσης φράσης",
+  "Phrase Base Text Color": "Χρώμα κειμένου φράσης"
 }

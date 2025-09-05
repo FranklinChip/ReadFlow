@@ -448,5 +448,17 @@
   "Keep manual input": "मैन्युअल इनपुट रखें",
   "Google Books": "गूगल बुक्स",
   "Open Library": "ओपन लाइब्रेरी",
-  "Fiction, Science, History": "काल्पनिक, विज्ञान, इतिहास"
+  "Fiction, Science, History": "काल्पनिक, विज्ञान, इतिहास",
+  "Above": "ऊपर",
+  "Below": "नीचे",
+  "Basic Settings": "मूल सेटिंग्स",
+  "Word Settings": "शब्द सेटिंग्स",
+  "Phrase Settings": "वाक्यांश सेटिंग्स",
+  "Word Base Style": "शब्द आधार शैली",
+  "Word Base Highlight Color": "शब्द हाइलाइट रंग",
+  "Word Base Text Color": "शब्द टेक्स्ट रंग",
+  "Show Word Annotations in Phrases": "वाक्यांशों में शब्द एनोटेशन दिखाएं",
+  "Phrase Base Style": "वाक्यांश आधार शैली",
+  "Phrase Base Highlight Color": "वाक्यांश हाइलाइट रंग",
+  "Phrase Base Text Color": "वाक्यांश टेक्स्ट रंग"
 }

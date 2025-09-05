@@ -464,5 +464,17 @@
   "Keep manual input": "الاحتفاظ بالإدخال اليدوي",
   "Google Books": "كتب جوجل",
   "Open Library": "المكتبة المفتوحة",
-  "Fiction, Science, History": "خيال، علوم، تاريخ"
+  "Fiction, Science, History": "خيال، علوم، تاريخ",
+  "Above": "أعلى",
+  "Below": "أسفل",
+  "Basic Settings": "الإعدادات الأساسية",
+  "Word Settings": "إعدادات الكلمات",
+  "Phrase Settings": "إعدادات العبارات",
+  "Word Base Style": "نمط الكلمة الأساسي",
+  "Word Base Highlight Color": "لون تمييز الكلمة",
+  "Word Base Text Color": "لون نص الكلمة",
+  "Show Word Annotations in Phrases": "إظهار تعليقات الكلمات في العبارات",
+  "Phrase Base Style": "نمط العبارة الأساسي",
+  "Phrase Base Highlight Color": "لون تمييز العبارة",
+  "Phrase Base Text Color": "لون نص العبارة"
 }

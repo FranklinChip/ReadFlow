@@ -25,7 +25,7 @@ export function useWordsAnnotation(
     enabled = true,
     retryAttempts = 3,
     retryDelay = 1000,
-    timeoutMs = 90000 // 默认90秒，适应推理模型
+    timeoutMs = 180000 // 默认180秒（3分钟），适应推理模型处理长文本
   } = options;
 
   const { getViewSettings, getViewState, getProgress } = useReaderStore();

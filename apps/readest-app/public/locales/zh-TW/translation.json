@@ -457,5 +457,17 @@
   "Keep manual input": "保留手動輸入",
   "Google Books": "Google 圖書",
   "Open Library": "開放圖書館",
-  "Fiction, Science, History": "小說，科學，歷史"
+  "Fiction, Science, History": "小說，科學，歷史",
+  "Above": "上方",
+  "Below": "下方",
+  "Basic Settings": "基本設定",
+  "Word Settings": "詞彙設定",
+  "Phrase Settings": "短語設定",
+  "Word Base Style": "詞彙基礎樣式",
+  "Word Base Highlight Color": "詞彙高亮顏色",
+  "Word Base Text Color": "詞彙文字顏色",
+  "Show Word Annotations in Phrases": "在短語中顯示詞彙註釋",
+  "Phrase Base Style": "短語基礎樣式",
+  "Phrase Base Highlight Color": "短語高亮顏色",
+  "Phrase Base Text Color": "短語文字顏色"
 }

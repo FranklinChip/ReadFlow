@@ -457,5 +457,17 @@
   "Keep manual input": "手動入力を保持",
   "Google Books": "Google Books",
   "Open Library": "Open Library",
-  "Fiction, Science, History": "小説、科学、歴史"
+  "Fiction, Science, History": "小説、科学、歴史",
+  "Above": "上",
+  "Below": "下",
+  "Basic Settings": "基本設定",
+  "Word Settings": "単語設定",
+  "Phrase Settings": "フレーズ設定",
+  "Word Base Style": "単語ベーススタイル",
+  "Word Base Highlight Color": "単語ハイライト色",
+  "Word Base Text Color": "単語テキスト色",
+  "Show Word Annotations in Phrases": "フレーズ内の単語注釈を表示",
+  "Phrase Base Style": "フレーズベーススタイル",
+  "Phrase Base Highlight Color": "フレーズハイライト色",
+  "Phrase Base Text Color": "フレーズテキスト色"
 }

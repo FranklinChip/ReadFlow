@@ -457,5 +457,17 @@
   "Keep manual input": "수동 입력 유지",
   "Google Books": "구글 북스",
   "Open Library": "오픈 라이브러리",
-  "Fiction, Science, History": "소설, 과학, 역사"
+  "Fiction, Science, History": "소설, 과학, 역사",
+  "Above": "위",
+  "Below": "아래",
+  "Basic Settings": "기본 설정",
+  "Word Settings": "단어 설정",
+  "Phrase Settings": "구문 설정",
+  "Word Base Style": "단어 기본 스타일",
+  "Word Base Highlight Color": "단어 하이라이트 색상",
+  "Word Base Text Color": "단어 텍스트 색상",
+  "Show Word Annotations in Phrases": "구문에서 단어 주석 표시",
+  "Phrase Base Style": "구문 기본 스타일",
+  "Phrase Base Highlight Color": "구문 하이라이트 색상",
+  "Phrase Base Text Color": "구문 텍스트 색상"
 }

@@ -34,5 +34,17 @@
   "Show": "Show",
   "Clear": "Clear",
   "Enter your Qwen API key...": "Enter your Qwen API key...",
-  "Required for word annotation to work. Get your API key from": "Required for word annotation to work. Get your API key from"
+  "Required for word annotation to work. Get your API key from": "Required for word annotation to work. Get your API key from",
+  "Above": "Above",
+  "Below": "Below",
+  "Basic Settings": "Basic Settings",
+  "Word Settings": "Word Settings",
+  "Phrase Settings": "Phrase Settings",
+  "Word Base Style": "Word Base Style",
+  "Word Base Highlight Color": "Word Base Highlight Color",
+  "Word Base Text Color": "Word Base Text Color",
+  "Show Word Annotations in Phrases": "Show Word Annotations in Phrases",
+  "Phrase Base Style": "Phrase Base Style",
+  "Phrase Base Highlight Color": "Phrase Base Highlight Color",
+  "Phrase Base Text Color": "Phrase Base Text Color"
 }

@@ -444,5 +444,17 @@
   "Keep manual input": "เก็บข้อมูลที่ป้อนด้วยตนเอง",
   "Google Books": "Google Books",
   "Open Library": "Open Library",
-  "Fiction, Science, History": "นิยาย, วิทยาศาสตร์, ประวัติศาสตร์"
+  "Fiction, Science, History": "นิยาย, วิทยาศาสตร์, ประวัติศาสตร์",
+  "Above": "ด้านบน",
+  "Below": "ด้านล่าง",
+  "Basic Settings": "การตั้งค่าพื้นฐาน",
+  "Word Settings": "การตั้งค่าคำ",
+  "Phrase Settings": "การตั้งค่าวลี",
+  "Word Base Style": "รูปแบบพื้นฐานของคำ",
+  "Word Base Highlight Color": "สีไฮไลต์ของคำ",
+  "Word Base Text Color": "สีข้อความของคำ",
+  "Show Word Annotations in Phrases": "แสดงหมายเหตุของคำในวลี",
+  "Phrase Base Style": "รูปแบบพื้นฐานของวลี",
+  "Phrase Base Highlight Color": "สีไฮไลต์ของวลี",
+  "Phrase Base Text Color": "สีข้อความของวลี"
 }

@@ -532,5 +532,17 @@
   "Show": "显示",
   "Clear": "清除",
   "Enter your Qwen API key...": "请输入您的Qwen API密钥...",
-  "Required for word annotation to work. Get your API key from": "词汇注释功能需要此密钥。您可以从以下网址获取API密钥："
+  "Required for word annotation to work. Get your API key from": "词汇注释功能需要此密钥。您可以从以下网址获取API密钥：",
+  "Above": "上方",
+  "Below": "下方",
+  "Basic Settings": "基础设置",
+  "Word Settings": "词汇设置",
+  "Phrase Settings": "短语设置",
+  "Word Base Style": "词汇基础样式",
+  "Word Base Highlight Color": "词汇高亮颜色",
+  "Word Base Text Color": "词汇文字颜色",
+  "Show Word Annotations in Phrases": "在短语中显示词汇注释",
+  "Phrase Base Style": "短语基础样式",
+  "Phrase Base Highlight Color": "短语高亮颜色",
+  "Phrase Base Text Color": "短语文字颜色"
 }

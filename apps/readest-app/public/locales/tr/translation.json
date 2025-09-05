@@ -448,5 +448,17 @@
   "Keep manual input": "Manuel girişi koru",
   "Google Books": "Google Books",
   "Open Library": "Open Library",
-  "Fiction, Science, History": "Kurgu, Bilim, Tarih"
+  "Fiction, Science, History": "Kurgu, Bilim, Tarih",
+  "Above": "Yukarı",
+  "Below": "Aşağı",
+  "Basic Settings": "Temel Ayarlar",
+  "Word Settings": "Kelime Ayarları",
+  "Phrase Settings": "Cümle Ayarları",
+  "Word Base Style": "Kelime Temel Stili",
+  "Word Base Highlight Color": "Kelime Vurgu Rengi",
+  "Word Base Text Color": "Kelime Metin Rengi",
+  "Show Word Annotations in Phrases": "Cümlelerde Kelime Açıklamalarını Göster",
+  "Phrase Base Style": "Cümle Temel Stili",
+  "Phrase Base Highlight Color": "Cümle Vurgu Rengi",
+  "Phrase Base Text Color": "Cümle Metin Rengi"
 }

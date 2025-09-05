@@ -452,5 +452,17 @@
   "Keep manual input": "Mantieni input manuale",
   "Google Books": "Google Books",
   "Open Library": "Open Library",
-  "Fiction, Science, History": "Narrativa, Scienza, Storia"
+  "Fiction, Science, History": "Narrativa, Scienza, Storia",
+  "Above": "Sopra",
+  "Below": "Sotto",
+  "Basic Settings": "Impostazioni di base",
+  "Word Settings": "Impostazioni parole",
+  "Phrase Settings": "Impostazioni frasi",
+  "Word Base Style": "Stile base parola",
+  "Word Base Highlight Color": "Colore evidenziazione parola",
+  "Word Base Text Color": "Colore testo parola",
+  "Show Word Annotations in Phrases": "Mostra annotazioni parole nelle frasi",
+  "Phrase Base Style": "Stile base frase",
+  "Phrase Base Highlight Color": "Colore evidenziazione frase",
+  "Phrase Base Text Color": "Colore testo frase"
 }

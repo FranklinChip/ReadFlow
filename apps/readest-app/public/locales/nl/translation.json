@@ -448,5 +448,17 @@
   "Keep manual input": "Handmatige invoer behouden",
   "Google Books": "Google Books",
   "Open Library": "Open Library",
-  "Fiction, Science, History": "Fictie, Wetenschap, Geschiedenis"
+  "Fiction, Science, History": "Fictie, Wetenschap, Geschiedenis",
+  "Above": "Boven",
+  "Below": "Onder",
+  "Basic Settings": "Basisinstellingen",
+  "Word Settings": "Woordinstellingen",
+  "Phrase Settings": "Zinsinstellingen",
+  "Word Base Style": "Woord basisstijl",
+  "Word Base Highlight Color": "Woord markeerkleur",
+  "Word Base Text Color": "Woord tekstkleur",
+  "Show Word Annotations in Phrases": "Toon woordannotaties in zinnen",
+  "Phrase Base Style": "Zin basisstijl",
+  "Phrase Base Highlight Color": "Zin markeerkleur",
+  "Phrase Base Text Color": "Zin tekstkleur"
 }
