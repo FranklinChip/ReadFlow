@@ -68,7 +68,7 @@
       "developmentTeam": "J5W48D69VR",
       "minimumSystemVersion": "14.0"
     },
-    "fileAssociations": [
+  "fileAssociations": [
       {
         "name": "epub",
         "ext": ["epub"],
@@ -111,8 +111,8 @@
         "mimeType": "application/pdf",
         "role": "Viewer"
       }
-    ],
-    "createUpdaterArtifacts": true
+  ],
+  "createUpdaterArtifacts": false
   },
   "plugins": {
     "fs": {
