@@ -248,7 +248,7 @@ Return results in the specified JSON format with annotations in ${targetLanguage
               if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
                 fullContent += data.choices[0].delta.content;
               }
-            } catch (parseError) {
+            } catch {
               // 忽略解析错误的数据块
             }
           }
